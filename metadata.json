@@ -1,0 +1,6 @@
+{
+  "name": "Guia de Tecnologia e Inovação - BOT CISEB",
+  "description": "Guia técnico oficial e assistente pedagógico de tecnologia, inovação e currículo da Rede Estadual de Ensino do Pará (SEDUC-PA / DINOV / CISEB).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
