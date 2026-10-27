@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Syne', sans-serif;
+
+  --color-ciseb-blue: #005BAC;
+  --color-ciseb-deep: #013780;
+  --color-ciseb-mid: #004E96;
+  --color-ciseb-cyan: #00AAFF;
+  --color-ciseb-sky: #E0F2FE;
+  --color-ciseb-green: #059669;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+@media print {
+  header, nav, .no-print, button, input, textarea {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+  }
+  .print-container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  table {
+    page-break-inside: avoid;
+  }
+}
