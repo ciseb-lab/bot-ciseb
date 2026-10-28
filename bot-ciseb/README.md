@@ -4,21 +4,25 @@ Assistente de apoio à formação e às práticas pedagógicas da educação pú
 
 ## Arquitetura e tecnologias
 
-- Frontend: React 19, TypeScript, Vite e Firebase Web SDK.
-- API: Node.js, Express e `@google/genai`; a chave Gemini permanece exclusivamente no servidor.
+- `frontend/`: aplicação React, componentes, estilos, Firebase Web SDK e assets estáticos.
+- `backend/`: API Express, autenticação Firebase Admin, segurança, integração Gemini, geração PDF e documentos institucionais.
+- `shared/`: política de domínio e catálogo curricular usados pelo cliente e pelo servidor.
+- Raiz: comandos npm, dependências, configuração Vite/TypeScript, testes e documentação.
+- Tecnologias do frontend: React 19, TypeScript, Vite e Firebase Web SDK.
+- Tecnologias do backend: Node.js, Express e `@google/genai`; a chave Gemini permanece exclusivamente no servidor.
 - Identidade e persistência: Firebase Authentication e Cloud Firestore com regras restritivas.
 - Documentos: PDFs locais indexados em trechos no início do servidor (RAG; não há retreinamento do modelo).
 - PDF: conteúdo revisado no cliente é enviado à API para geração do arquivo.
-- Deploy documentado: frontend Vercel e API Cloud Run; `firebase.json` também contém configuração de Firebase Hosting com rewrite para Cloud Run.
+- Deploy documentado: API Express no Render e frontend mantido no provedor atual; `firebase.json` ainda contém uma regra de rewrite legada para Cloud Run.
 
-Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md), [segurança](docs/SECURITY.md), [custos Gemini](docs/AI_COST_OPTIMIZATION.md) e [deploy](DEPLOY.md).
+Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md), [segurança](docs/SECURITY.md), [custos Gemini](docs/AI_COST_OPTIMIZATION.md) e [deploy no Render](DEPLOY.md).
 
 ## Pré-requisitos e execução local
 
-- Node.js 20 ou compatível com as versões do Vite instaladas.
+- Node.js 20.19+ ou 22.12+; a versão local validada nesta atualização é 24.19.0.
 - npm, Firebase project configurado para uso real ou Firebase CLI para os emuladores.
 
-Na pasta `bot-ciseb`:
+Na raiz do projeto:
 
 ```powershell
 Copy-Item .env.example .env.local
@@ -42,14 +46,14 @@ Os testes que dependem de Firebase podem ser executados com os emuladores confor
 
 ## Configuração de ambiente
 
-`.env.example` enumera nomes e valores vazios/fictícios para desenvolvimento. Configurações administrativas pertencem ao ambiente seguro do servidor/Secret Manager; as configurações `VITE_FIREBASE_*` são lidas pelo bundle web e não substituem Authentication, Security Rules ou autorização do servidor. Configure a origem do site em `APP_ORIGINS` e não habilite App Check obrigatório antes de configurar e testar a chave do provedor em cada ambiente.
+`.env.example` enumera nomes e valores vazios/fictícios para desenvolvimento. Segredos do backend devem permanecer nas variáveis seguras do ambiente de hospedagem; as configurações `VITE_FIREBASE_*` são lidas pelo bundle web e não substituem Authentication, Security Rules ou autorização do servidor. Configure a origem do site em `APP_ORIGINS` e não habilite App Check obrigatório antes de configurar e testar a chave do provedor em cada ambiente.
 
 ## Documentos e respostas
 
-Os nove PDFs de `documents/` são indexados ao iniciar a API. A cada pergunta, a recuperação local seleciona até quatro trechos relevantes e remove duplicatas; somente contexto recente limitado é enviado ao Gemini. Referências informam o arquivo e a página física quando identificável. PDFs digitalizados precisam de OCR para busca textual. O status está em `/api/documents/status` (requer sessão autenticada).
+Os nove PDFs de `backend/documents/` são indexados ao iniciar a API. A cada pergunta, a recuperação local seleciona até quatro trechos relevantes e remove duplicatas; somente contexto recente limitado é enviado ao Gemini. Referências informam o arquivo e a página física quando identificável. PDFs digitalizados precisam de OCR para busca textual. O status está em `/api/documents/status` (requer sessão autenticada).
 
 O modelo configurado é `gemini-3.5-flash-lite`. A resposta pode ficar incompleta ao atingir o teto de geração; nesse caso, a interface informa isso explicitamente. Métricas agregadas de tokens e duração não incluem conteúdo das conversas. Consulte [otimização de custos](docs/AI_COST_OPTIMIZATION.md).
 
 ## Deploy e preservação de dados
 
-Siga [DEPLOY.md](DEPLOY.md). Históricos no `localStorage` não são migrados automaticamente: a pessoa usuária inicia a importação e mantém a cópia local. O Firestore mantém conversas até exclusão pelo usuário; não há política de expiração automática de histórico configurada. PDFs e documentos institucionais existentes devem ser preservados.
+O guia [DEPLOY.md](DEPLOY.md) descreve a hospedagem do backend Express no Render e a configuração do frontend no provedor atual. A publicação no Render depende de resolver e validar a disponibilidade das credenciais ADC usadas pelo Firebase Admin; o guia não cria nem substitui essa integração. Históricos no `localStorage` não são migrados automaticamente: a pessoa usuária inicia a importação e mantém a cópia local. O Firestore mantém conversas até exclusão pelo usuário; não há política de expiração automática de histórico configurada. PDFs e documentos institucionais existentes devem ser preservados.

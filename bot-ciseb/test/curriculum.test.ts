@@ -4,9 +4,9 @@ import {
   CURRICULUM_CATALOG_RECORDS,
   findCatalogRecord,
   findCatalogRecords,
-} from '../src/data/curriculumData.ts';
-import { verifyCurriculumSkill } from '../src/data/curriculumVerification.ts';
-import { extractMarkdownTables } from '../src/utils/formatters.ts';
+} from '../shared/curriculumData.ts';
+import { verifyCurriculumSkill } from '../backend/curriculumVerification.ts';
+import { extractMarkdownTables } from '../frontend/src/utils/formatters.ts';
 
 describe('Catálogo curricular e conferência documental', () => {
   test('localiza um registro pelo código sem tratá-lo como validação documental', () => {

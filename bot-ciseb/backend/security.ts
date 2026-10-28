@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { isIP } from 'node:net';
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminAppCheck, adminAuth, adminFirestore } from './firebaseAdmin.ts';
-import { isInstitutionalEmail } from '../src/config/authPolicy.ts';
+import { isInstitutionalEmail } from '../shared/authPolicy.ts';
 
 export interface AuthenticatedIdentity {
   uid: string;

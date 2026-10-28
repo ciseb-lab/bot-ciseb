@@ -2,7 +2,7 @@
 
 ## Modelo e parâmetros
 
-O servidor mantém `gemini-3.5-flash-lite` em `server.ts`; a documentação oficial consultada em 27/10/2026 o lista como modelo estável para Gemini API, com entrada máxima de 1.048.576 tokens e saída máxima de 65.536 tokens. A configuração da geração usa temperatura `0.4` (campo documentado para geração) e `maxOutputTokens: 2048`, deliberadamente bem abaixo do teto do modelo. Nenhum modelo alternativo foi introduzido. Se a API retornar `MAX_TOKENS`, a resposta avisa que pode estar incompleta e orienta pedir continuação, em vez de truncar silenciosamente.
+O servidor mantém `gemini-3.5-flash-lite` em `backend/index.ts`; a documentação oficial consultada em 27/10/2026 o lista como modelo estável para Gemini API, com entrada máxima de 1.048.576 tokens e saída máxima de 65.536 tokens. A configuração da geração usa temperatura `0.4` (campo documentado para geração) e `maxOutputTokens: 2048`, deliberadamente bem abaixo do teto do modelo. Nenhum modelo alternativo foi introduzido. Se a API retornar `MAX_TOKENS`, a resposta avisa que pode estar incompleta e orienta pedir continuação, em vez de truncar silenciosamente.
 
 Fontes: [modelo Gemini 3.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite), [referência do recurso Model](https://ai.google.dev/api/models), [geração de conteúdo](https://ai.google.dev/gemini-api/docs/generate-content).
 

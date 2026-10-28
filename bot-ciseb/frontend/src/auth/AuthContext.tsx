@@ -12,7 +12,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth, firebaseConfigured } from '../firebase/client.ts';
-import { isInstitutionalEmail } from '../config/authPolicy.ts';
+import { isInstitutionalEmail } from '../../../shared/authPolicy.ts';
 import { ensureUserProfile } from '../data/userProfileStore.ts';
 
 interface AuthContextValue {

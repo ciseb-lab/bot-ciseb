@@ -11,7 +11,7 @@
 1. No console Firebase, habilite Authentication e o provedor **E-mail/senha**.
 2. Cadastros pelo aplicativo ficam desligados por padrão. Para habilitá-los deliberadamente, configure `VITE_ALLOW_INSTITUTIONAL_SIGNUP=true` no build frontend; o fluxo envia verificação de e-mail.
 3. Configure modelos de e-mail em português, a URL de ação e os domínios autorizados para redirecionamentos conforme o domínio real de publicação.
-4. A política do app está centralizada em `src/config/authPolicy.ts` e autoriza apenas `escola.seduc.pa.gov.br`. Ela compara o domínio completo sem diferenciar caixa. O backend valida novamente ID token, revogação, domínio e `email_verified`.
+4. A política do app está centralizada em `shared/authPolicy.ts` e autoriza apenas `escola.seduc.pa.gov.br`. Ela compara o domínio completo sem diferenciar caixa. O backend valida novamente ID token, revogação, domínio e `email_verified`.
 5. Ative a proteção de enumeração de e-mails recomendada pelo Firebase. Recuperação e reenvio seguem as proteções e limites do provedor.
 
 ## Firestore

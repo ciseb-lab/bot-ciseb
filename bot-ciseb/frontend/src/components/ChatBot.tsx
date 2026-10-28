@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Copy, Check, Printer, ShieldCheck, RefreshCw, FileText, Compass, AlertCircle } from 'lucide-react';
 import { extractMarkdownTables } from '../utils/formatters.ts';
 import { apiFetch } from '../utils/api.ts';
-import { CurriculumSkill } from '../data/curriculumData.ts';
+import { CurriculumSkill } from '../../../shared/curriculumData.ts';
 import { MarkdownText } from './MarkdownText.tsx';
 
 export interface ChatMessage {

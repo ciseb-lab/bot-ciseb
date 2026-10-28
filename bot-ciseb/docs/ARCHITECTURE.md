@@ -2,9 +2,11 @@
 
 ## Estado atual
 
-O projeto é uma aplicação React/TypeScript servida localmente por Express com middleware do Vite. Em produção, o frontend pode ser publicado no Vercel com a API no Cloud Run (guia `DEPLOY.md`) ou pelo Firebase Hosting (`firebase.json`), que reescreve `/api/**` para o serviço Cloud Run `bot-ciseb-api` em `southamerica-east1`.
+O projeto é uma aplicação React/TypeScript servida localmente por Express com middleware do Vite. O destino documentado para a API é o Render Web Service, com o frontend mantido no provedor atual e configurado por `VITE_API_BASE_URL` (guia `DEPLOY.md`). `firebase.json` ainda possui um rewrite legado `/api/**` para Cloud Run; ele não encaminha chamadas quando o frontend usa a URL absoluta do Render. A implantação no Render depende de uma decisão separada sobre a identidade ADC já usada pelo Firebase Admin, pois o Render não fornece automaticamente a identidade do Cloud Run.
 
-O backend carrega e indexa PDFs da pasta `documents/` uma vez durante a inicialização. A recuperação lexical seleciona os trechos relacionados à pergunta; códigos curriculares só são tratados como conferidos quando código e texto literal aparecem juntos em uma página indexada. O modelo configurado é `gemini-3.5-flash-lite` via `@google/genai`. A geração de PDF é feita no servidor com o conteúdo que a pessoa revisou na interface.
+O backend carrega e indexa PDFs da pasta `backend/documents/` uma vez durante a inicialização. A recuperação lexical seleciona os trechos relacionados à pergunta; códigos curriculares só são tratados como conferidos quando código e texto literal aparecem juntos em uma página indexada. O modelo configurado é `gemini-3.5-flash-lite` via `@google/genai`. A geração de PDF é feita no servidor com o conteúdo que a pessoa revisou na interface.
+
+O código está separado em `frontend/` (React/Vite e assets), `backend/` (Express, Firebase Admin, lógica de servidor e documentos) e `shared/` (política institucional e catálogo curricular compartilhados). `package.json`, lockfile, testes e configuração de build permanecem na raiz para manter um único fluxo npm. O Vite usa `frontend/` como raiz web e continua gerando `dist/` na raiz do pacote para compatibilidade com os destinos atuais de frontend.
 
 ## Fluxo de autenticação e API
 
@@ -33,4 +35,4 @@ Os limites são contadores transacionais do Firestore, compartilhados entre inst
 - A busca documental e a geração de PDF são locais ao servidor e não são repetidas por cache de resposta.
 - Conversas são dados do usuário, não do Admin SDK. O backend usa identidade verificada para cotas e chamadas caras.
 - A escolha do modelo foi preservada; a compatibilidade/configuração é descrita em `AI_COST_OPTIMIZATION.md`.
-- O deploy e as integrações reais dependem da configuração do projeto Firebase, permissões ADC/Cloud Run, domínios e segredos do ambiente de destino.
+- O deploy no Render e as integrações reais dependem da configuração do projeto Firebase, da resolução da identidade ADC fora do Cloud Run, dos domínios e dos segredos do ambiente de destino.

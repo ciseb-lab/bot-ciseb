@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PDFParse } from 'pdf-parse';
-import { generatePdf } from '../src/utils/pdfExport.ts';
+import { generatePdf } from '../backend/pdfExport.ts';
 
 test('gera um PDF válido com texto em português e conteúdo paginado', async () => {
   const paragraphs = Array.from({ length: 140 }, (_, index) =>

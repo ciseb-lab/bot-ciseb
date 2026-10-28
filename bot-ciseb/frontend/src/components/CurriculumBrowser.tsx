@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, BookOpen, CheckCircle, AlertTriangle, ArrowRight, Copy, Check, ExternalLink } from 'lucide-react';
-import { CURRICULUM_CATALOG_RECORDS, CurriculumSkill } from '../data/curriculumData.ts';
+import { CURRICULUM_CATALOG_RECORDS, CurriculumSkill } from '../../../shared/curriculumData.ts';
 import { apiFetch } from '../utils/api.ts';
 
 interface CurriculumBrowserProps {

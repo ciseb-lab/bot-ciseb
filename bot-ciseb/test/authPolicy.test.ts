@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { INSTITUTIONAL_EMAIL_DOMAINS, isInstitutionalEmail } from '../src/config/authPolicy.ts';
+import { INSTITUTIONAL_EMAIL_DOMAINS, isInstitutionalEmail } from '../shared/authPolicy.ts';
 
 describe('Política de domínio institucional', () => {
   test('aceita o domínio completo sem diferenciar maiúsculas e minúsculas', () => {

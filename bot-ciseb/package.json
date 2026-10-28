@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server/bootstrap.ts",
+    "dev": "tsx backend/bootstrap.ts",
     "build": "vite build",
     "test": "tsx --test test/authPolicy.test.ts test/conversationStore.test.ts test/curriculum.test.ts test/documentKnowledge.test.ts test/pdfExport.test.ts test/security.test.ts",
-    "start": "tsx server/bootstrap.ts",
+    "start": "tsx backend/bootstrap.ts",
     "preview": "vite preview",
-    "clean": "node -e \"for (const path of ['dist','server.js']) require('node:fs').rmSync(path, { recursive:true, force:true })\"",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive:true, force:true })\"",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

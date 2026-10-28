@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-28 — Separação entre frontend e backend
+
+- Organizados o cliente em `frontend/`, o servidor e PDFs em `backend/`, e módulos usados pelos dois em `shared/`.
+- Mantidos o package manager, o lockfile, os testes e os comandos npm na raiz do app; o Vite continua publicando em `dist/`.
+- Preservados os documentos institucionais e os fluxos existentes.
+
+## 2026-10-28 — Preparação para Render
+
+- Documentado o deploy nativo da API Express em Web Service gratuito Render e a configuração do frontend por `VITE_API_BASE_URL`.
+- Confirmados uso de `PORT`, binding `0.0.0.0`, health check `/health` e inclusão dos PDFs versionados no deploy.
+- Registrada a dependência preexistente de Firebase Admin/ADC como bloqueio que requer decisão separada; nenhuma integração ou credencial Firebase foi criada, removida ou alterada.
+
 ## 2026-10-27 — Segurança, histórico e eficiência
 
 - Validadores de chat e PDF agora executam antes de consumir as cotas do limitador.

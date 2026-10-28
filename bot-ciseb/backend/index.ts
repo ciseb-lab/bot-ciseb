@@ -7,18 +7,18 @@ import {
   CURRICULUM_CATALOG_RECORDS,
   findCatalogRecords,
   findCatalogRecord,
-} from './src/data/curriculumData.ts';
-import type { CurriculumSkill } from './src/data/curriculumData.ts';
-import { verifyCurriculumSkill } from './src/data/curriculumVerification.ts';
-import type { VerifiedCurriculumSkill } from './src/data/curriculumVerification.ts';
+} from '../shared/curriculumData.ts';
+import type { CurriculumSkill } from '../shared/curriculumData.ts';
+import { verifyCurriculumSkill } from './curriculumVerification.ts';
+import type { VerifiedCurriculumSkill } from './curriculumVerification.ts';
 import {
   loadDocumentIndex,
   searchDocumentIndex,
-} from './src/data/documentKnowledge.ts';
-import type { DocumentIndex } from './src/data/documentKnowledge.ts';
-import { generatePdf } from './src/utils/pdfExport.ts';
-import { securityLimits, rateLimit, limitConcurrentChats, requireAppCheck, requireInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery, validateCurriculumCode } from './server/security.ts';
-import { isFirebaseAdminConfigured } from './server/firebaseAdmin.ts';
+} from './documentKnowledge.ts';
+import type { DocumentIndex } from './documentKnowledge.ts';
+import { generatePdf } from './pdfExport.ts';
+import { securityLimits, rateLimit, limitConcurrentChats, requireAppCheck, requireInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery, validateCurriculumCode } from './security.ts';
+import { isFirebaseAdminConfigured } from './firebaseAdmin.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,7 +40,7 @@ const app = express();
 app.set('trust proxy', trustedProxyHops > 0 ? trustedProxyHops : false);
 app.get('/health', (_req, res) => res.json({ status: 'ok', documentsReady: Boolean(documentIndex) }));
 if (isProd && allowedOrigins.size === 0) {
-  throw new Error('APP_ORIGINS precisa conter a origem HTTPS do Firebase Hosting em produção.');
+  throw new Error('APP_ORIGINS precisa conter as origens HTTPS autorizadas em produção.');
 }
 app.use((req, res, next) => {
   const origin = req.get('origin');
@@ -409,11 +409,11 @@ const requestErrorHandler: ErrorRequestHandler = (error: unknown, _req, res, _ne
 };
 app.use(requestErrorHandler);
 
-// The local developer server also serves Vite. In production Firebase Hosting
-// serves the frontend and rewrites /api requests to this Cloud Run service.
+// The local developer server also serves Vite. In production the frontend is
+// hosted separately and calls this API using its configured base URL.
 async function startServer() {
-  if (isProd && !process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY precisa ser associada ao Secret Manager em produção.');
-  if (isProd && !isFirebaseAdminConfigured()) throw new Error('Configure FIREBASE_PROJECT_ID e a identidade de serviço do Firebase Admin em produção.');
+  if (isProd && !process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY precisa ser configurada como variável secreta do backend em produção.');
+  if (isProd && !isFirebaseAdminConfigured()) throw new Error('Configure FIREBASE_PROJECT_ID e a identidade Firebase Admin do ambiente de produção.');
   documentIndex = await loadDocumentIndex(path.join(__dirname, 'documents'));
   console.log(
     `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis.`

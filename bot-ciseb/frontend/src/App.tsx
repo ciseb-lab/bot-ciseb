@@ -12,7 +12,7 @@ import { DocsModal } from './components/DocsModal.tsx';
 import { QuickPlanWizard } from './components/QuickPlanWizard.tsx';
 import { PdfExportModal } from './components/PdfExportModal.tsx';
 import { CurriculumBrowser } from './components/CurriculumBrowser.tsx';
-import { CurriculumSkill } from './data/curriculumData.ts';
+import { CurriculumSkill } from '../../shared/curriculumData.ts';
 
 interface ChatConversation extends ChatSession {
   messages: Message[];

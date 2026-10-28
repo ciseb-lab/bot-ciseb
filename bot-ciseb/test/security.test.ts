@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import type { NextFunction, Request, Response } from 'express';
-import { createRateLimitMiddleware, hasVerifiedInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery } from '../server/security.ts';
+import { createRateLimitMiddleware, hasVerifiedInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery } from '../backend/security.ts';
 
 function createResponse() {
   const headers = new Map<string, string>();

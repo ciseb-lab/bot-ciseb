@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Bot, Check, Copy, FileDown, LogOut, PanelLeftOpen, RefreshCw, Sparkles } from 'lucide-react';
 import { apiFetch, downloadApiFile } from '../utils/api.ts';
-import { CurriculumSkill } from '../data/curriculumData.ts';
+import { CurriculumSkill } from '../../../shared/curriculumData.ts';
 import { MarkdownText } from './MarkdownText.tsx';
 
 export interface GroundedDocumentReference {

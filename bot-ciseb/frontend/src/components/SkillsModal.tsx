@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Search, BookOpen, ArrowRight, Check, Copy } from 'lucide-react';
-import { CURRICULUM_CATALOG_RECORDS, CurriculumSkill } from '../data/curriculumData.ts';
+import { CURRICULUM_CATALOG_RECORDS, CurriculumSkill } from '../../../shared/curriculumData.ts';
 
 interface SkillsModalProps {
   isOpen: boolean;

@@ -1,4 +1,4 @@
-import type { CurriculumSkill } from './curriculumData.ts';
+import type { CurriculumSkill } from '../shared/curriculumData.ts';
 import type { DocumentPage } from './documentKnowledge.ts';
 
 export interface VerifiedCurriculumSkill {

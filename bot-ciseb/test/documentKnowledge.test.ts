@@ -5,9 +5,9 @@ import {
   loadDocumentIndex,
   searchDocumentIndex,
   splitDocumentText,
-} from '../src/data/documentKnowledge.ts';
-import { findCatalogRecord } from '../src/data/curriculumData.ts';
-import { verifyCurriculumSkill } from '../src/data/curriculumVerification.ts';
+} from '../backend/documentKnowledge.ts';
+import { findCatalogRecord } from '../shared/curriculumData.ts';
+import { verifyCurriculumSkill } from '../backend/curriculumVerification.ts';
 
 describe('Base documental em PDF', () => {
   test('divide textos em trechos e recupera os que correspondem à consulta', () => {
@@ -27,7 +27,7 @@ describe('Base documental em PDF', () => {
   });
 
   test('indexa os PDFs fornecidos e encontra trechos do conteúdo', async () => {
-    const index = await loadDocumentIndex(path.join(process.cwd(), 'documents'));
+    const index = await loadDocumentIndex(path.join(process.cwd(), 'backend', 'documents'));
 
     assert.strictEqual(index.sources.length, 9);
     assert.strictEqual(index.documents.length, 9);
