@@ -2,9 +2,11 @@
 
 ## Identidade e autorização
 
-Firebase Authentication gerencia senhas e sessões. A política única atual é `escola.seduc.pa.gov.br`; não adicione domínios sem aprovação. A API verifica ID token e revogação com Firebase Admin, exige e-mail verificado e compara o domínio completo. O cliente não é autoridade para UID. Regras do Firestore isolam cada conta; não existe campo de privilégio editável pelo usuário.
+Firebase Authentication gerencia o login Google e as sessões; o Bot CISEB não recebe nem armazena senhas. A política institucional centralizada permite somente `escola.seduc.pa.gov.br` e `seduc.pa.gov.br`, comparados como domínios completos. Cliente, backend e regras do Firestore exigem e-mail verificado e provedor `google.com`. A API verifica ID token e revogação com Firebase Admin. O cliente não é autoridade para UID. Regras do Firestore isolam cada conta; não existe campo de privilégio editável pelo usuário.
 
-Todos os endpoints `/api/**` requerem identidade institucional. App Check é complementar e opcional até que o provedor esteja configurado e validado em todos os ambientes; depois, pode ser exigido por `APP_CHECK_REQUIRED=true`. Aplicar App Check ao produto Firestore é uma configuração separada no console. O cadastro institucional do frontend é desabilitado por padrão. Autenticação, verificação, reenvio e recuperação usam Firebase diretamente; não há endpoint próprio de senha. O Firebase aplica suas proteções contra abuso de autenticação.
+Todos os endpoints `/api/**` requerem identidade Google institucional. App Check é complementar e opcional até que o provedor esteja configurado e validado em todos os ambientes; depois, pode ser exigido por `APP_CHECK_REQUIRED=true`. Aplicar App Check ao produto Firestore é uma configuração separada no console. A primeira autenticação Google pode criar o registro da conta no Firebase Authentication; não há cadastro de senha no Bot CISEB.
+
+Contas Firebase antigas autenticadas somente por senha serão recusadas pela política Google-only. O aplicativo não exclui nem vincula contas automaticamente; conflitos de credenciais devem ser avaliados antes de migrar usuários.
 
 ## Rate limiting e abuso
 

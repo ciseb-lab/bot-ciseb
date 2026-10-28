@@ -41,16 +41,31 @@ describe('Validação de requisições e limites', () => {
       uid: 'user-1',
       email: 'person@escola.seduc.pa.gov.br',
       email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
+    }), true);
+    assert.equal(hasVerifiedInstitutionalIdentity({
+      uid: 'user-2',
+      email: 'person@seduc.pa.gov.br',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
     }), true);
     assert.equal(hasVerifiedInstitutionalIdentity({
       uid: 'user-1',
       email: 'person@escola.seduc.pa.gov.br',
       email_verified: false,
+      firebase: { sign_in_provider: 'google.com' },
     }), false);
     assert.equal(hasVerifiedInstitutionalIdentity({
       uid: 'user-1',
       email: 'person@seduc.pa.gov.br',
       email_verified: true,
+      firebase: { sign_in_provider: 'password' },
+    }), false);
+    assert.equal(hasVerifiedInstitutionalIdentity({
+      uid: 'user-1',
+      email: 'person@outro.gov.br',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
     }), false);
   });
 

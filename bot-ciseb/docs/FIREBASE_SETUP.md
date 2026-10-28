@@ -2,21 +2,21 @@
 
 ## Projeto e app Web
 
-1. Use o projeto Firebase institucional existente ou crie um projeto aprovado pela instituição. Não habilite domínios extras sem autorização.
-2. Registre um app Web e configure no frontend os valores de `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` e `VITE_FIREBASE_APP_ID`. São configurações públicas do SDK Web, não credenciais Admin.
+1. Use o projeto Firebase institucional existente ou crie um projeto aprovado pela instituição. A política do aplicativo aceita somente `escola.seduc.pa.gov.br` e `seduc.pa.gov.br`.
+2. Registre um app Web e configure no ambiente de build do frontend os valores de `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` e `VITE_FIREBASE_APP_ID`. São configurações públicas do SDK Web, não credenciais Admin.
 3. Defina `FIREBASE_PROJECT_ID` no backend para o mesmo projeto. Em produção, use a identidade de serviço do Cloud Run e Application Default Credentials; não envie JSON de service account ao navegador, repositório, logs ou imagem.
 
 ## Authentication
 
-1. No console Firebase, habilite Authentication e o provedor **E-mail/senha**.
-2. Cadastros pelo aplicativo ficam desligados por padrão. Para habilitá-los deliberadamente, configure `VITE_ALLOW_INSTITUTIONAL_SIGNUP=true` no build frontend; o fluxo envia verificação de e-mail.
-3. Configure modelos de e-mail em português, a URL de ação e os domínios autorizados para redirecionamentos conforme o domínio real de publicação.
-4. A política do app está centralizada em `shared/authPolicy.ts` e autoriza apenas `escola.seduc.pa.gov.br`. Ela compara o domínio completo sem diferenciar caixa. O backend valida novamente ID token, revogação, domínio e `email_verified`.
-5. Ative a proteção de enumeração de e-mails recomendada pelo Firebase. Recuperação e reenvio seguem as proteções e limites do provedor.
+1. No console Firebase, habilite Authentication e o provedor **Google**. O frontend usa popup em desktop e redirecionamento em telas estreitas, persistindo a sessão no Firebase Auth.
+2. Em Authentication > Configurações, confirme que o domínio real do frontend está em **Domínios autorizados**. Não inclua domínios de e-mail adicionais nessa lista; ela controla origens de autenticação/redirecionamento, não a allowlist institucional do app.
+3. A allowlist centralizada em `shared/authPolicy.ts` aceita exatamente `escola.seduc.pa.gov.br` e `seduc.pa.gov.br`, sem diferenciar maiúsculas e minúsculas. O cliente e o backend validam o domínio, `email_verified` e o provedor Google; o backend também verifica assinatura, validade e revogação do ID token.
+4. O Google Workspace deve aplicar as políticas de acesso institucionais apropriadas. O provedor Google habilitado não restringe sozinho quais domínios podem iniciar o fluxo; o app recusa domínios não autorizados após receber a identidade.
+5. O primeiro login Google pode criar o registro da conta no Firebase Authentication; não é necessário criar usuário manualmente nem criar uma coleção de perfil no Console. Contas antigas criadas com e-mail/senha não atendem à política Google-only; possíveis conflitos de conta precisam de análise e vinculação segura, sem excluir usuários automaticamente.
 
 ## Firestore
 
-1. Crie o banco Cloud Firestore na localização aprovada para o serviço. Publique `firestore.rules` com `firebase deploy --only firestore:rules` após revisar projeto e ambiente.
+1. Crie o banco Cloud Firestore na localização aprovada para o serviço. Publique `firestore.rules` somente após revisar projeto e ambiente e concluir os testes; a regra exige o provedor Google.
 2. Estrutura atual:
 
 ```text
@@ -28,6 +28,7 @@ rateLimitCounters/{counterId}                    # somente Firebase Admin
 
 3. Regras exigem UID autenticado correspondente, domínio institucional e e-mail verificado; validam schema, tamanhos e timestamps. Operações do Admin SDK ignoram as regras; o backend usa Admin somente para autenticação, App Check e contadores, não para conversas.
 4. Ative uma política TTL do Firestore para `rateLimitCounters.expireAt` no console para remover contadores expirados. Sem TTL, os limites continuam funcionando, mas os documentos podem acumular. Não aplique retenção automática às conversas sem aprovação institucional.
+5. Antes de publicar regras, execute `npm run test:firestore-rules`. O teste usa o Firestore Emulator com o projeto fictício `demo-bot-ciseb-rules`; não acessa nem altera o banco real. Requer Firebase CLI e Java instalados. Não publique as regras até o login Google e a validação de domínio/provedor no frontend e backend estarem alinhados.
 
 ## Firebase App Check
 
@@ -45,8 +46,8 @@ Para um Firebase real local, use ADC no backend e nunca copie credenciais para `
 
 ## Verificação funcional
 
-- Crie uma conta autorizada em ambiente de teste, confirme a mensagem recebida e confira que uma conta não verificada não acessa a aplicação/API.
-- Teste domínio incorreto, credenciais inválidas, logout e redefinição de senha.
+- Entre com uma conta Google de cada domínio permitido e confirme que domínio incorreto, sessão não verificada e provedor diferente de Google são recusados pelo cliente, backend e regras.
+- Teste login, logout, sessão restaurada e domínio de autenticação autorizado para o frontend.
 - Crie conversas com dois usuários de teste e verifique listagem, leitura, gravação e exclusão entre contas; cada regra deve negar acesso cruzado.
 - Teste importação legada somente com consentimento explícito e confirme que a cópia no navegador permanece.
 - Use Firebase Emulator Suite para testes de regras; credenciais e conversas reais não devem ser usadas em testes automatizados.

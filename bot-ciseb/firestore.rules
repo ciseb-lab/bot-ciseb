@@ -5,8 +5,11 @@ service cloud.firestore {
       return request.auth != null
         && request.auth.uid == userId
         && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
         && request.auth.token.email is string
-        && request.auth.token.email.matches('(?i)^[^@]+@escola[.]seduc[.]pa[.]gov[.]br$');
+        && request.auth.token.email.matches(
+          '(?i)^[^@]+@(escola[.]seduc[.]pa[.]gov[.]br|seduc[.]pa[.]gov[.]br)$'
+        );
     }
 
     function validGroundedDocument(reference) {

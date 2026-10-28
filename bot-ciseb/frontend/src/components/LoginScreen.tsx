@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
+import { AlertCircle, LoaderCircle, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext.tsx';
 
 type AuthError = Error & { code?: string };
@@ -8,88 +8,51 @@ function friendlyAuthError(error: unknown): string {
   const code = (error as AuthError)?.code;
   switch (code) {
     case 'auth/domain-not-authorized':
-      return 'Use um endereço @escola.seduc.pa.gov.br autorizado.';
+      return 'Esta conta não pertence a um domínio institucional autorizado. Use @escola.seduc.pa.gov.br ou @seduc.pa.gov.br.';
+    case 'auth/google-email-not-verified':
+      return 'O Google não confirmou este endereço. Use uma conta institucional verificada.';
     case 'auth/not-configured':
       return 'O acesso institucional ainda não está configurado. Procure o suporte.';
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return 'E-mail ou senha não conferem.';
-    case 'auth/email-already-in-use':
-      return 'Já existe uma conta com este e-mail. Tente entrar.';
-    case 'auth/weak-password':
-      return 'Escolha uma senha mais forte (mínimo de 6 caracteres).';
+    case 'auth/unauthorized-domain':
+      return 'Este endereço do aplicativo ainda não está autorizado no Firebase Authentication.';
+    case 'auth/operation-not-allowed':
+      return 'O login Google não está habilitado para este projeto Firebase.';
+    case 'auth/account-exists-with-different-credential':
+      return 'Esta conta já está cadastrada por outro método. Procure o suporte institucional para vinculá-la com segurança.';
+    case 'auth/popup-blocked':
+      return 'O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.';
+    case 'auth/popup-closed-by-user':
+      return 'A janela de login foi fechada antes da conclusão.';
+    case 'auth/cancelled-popup-request':
+      return 'Já existe uma solicitação de login aberta neste navegador.';
     case 'auth/too-many-requests':
       return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
     case 'auth/network-request-failed':
       return 'Não foi possível conectar. Verifique sua conexão e tente novamente.';
-    case 'auth/invalid-email':
-      return 'Confira o formato do e-mail informado.';
-    case 'auth/operation-not-allowed':
-      return 'O acesso por e-mail e senha ainda não está habilitado no Firebase.';
     case 'auth/user-disabled':
       return 'Esta conta está desativada. Procure o suporte institucional.';
-    case 'auth/expired-action-code':
-      return 'Este link expirou. Solicite um novo e-mail.';
+    case 'auth/session-cleanup-failed':
+      return 'A conta não foi autorizada e não foi possível encerrar a sessão. Recarregue a página antes de tentar novamente.';
     default:
-      return 'Não foi possível concluir a solicitação. Tente novamente.';
+      return 'Não foi possível concluir o login. Tente novamente ou procure o suporte.';
   }
 }
 
 export function LoginScreen() {
-  const { configured, registrationEnabled, initializationError, user, signIn, register, sendVerification, refreshVerification, resetPassword, logout } = useAuth();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState(user?.email || '');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const { configured, initializationError, accessError, signInWithGoogle } = useAuth();
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [resendAvailableAt, setResendAvailableAt] = useState(0);
-  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
-  useEffect(() => {
-    if (!resendAvailableAt || currentTime >= resendAvailableAt) return;
-    const timer = window.setTimeout(() => setCurrentTime(Date.now()), Math.min(1000, resendAvailableAt - currentTime));
-    return () => window.clearTimeout(timer);
-  }, [currentTime, resendAvailableAt]);
-
-  const runAction = async (action: () => Promise<void>, successMessage = '') => {
+  const handleGoogleSignIn = async () => {
     setError('');
-    setNotice('');
     setIsBusy(true);
     try {
-      await action();
-      setNotice(successMessage);
+      await signInWithGoogle();
     } catch (reason) {
       setError(friendlyAuthError(reason));
     } finally {
       setIsBusy(false);
     }
-  };
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (mode === 'login') {
-      void runAction(() => signIn(email, password));
-      return;
-    }
-    if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-    void runAction(() => register(email, password), 'Conta criada. Enviamos um link para verificar seu e-mail institucional.');
-  };
-
-  const handleResendVerification = async () => {
-    if (currentTime < resendAvailableAt) return;
-    const nextAllowed = Date.now() + 60_000;
-    setResendAvailableAt(nextAllowed);
-    await runAction(sendVerification, 'E-mail de verificação enviado. Confira sua caixa de entrada e a pasta de spam.');
-  };
-
-  const handleRefreshVerification = async () => {
-    await runAction(refreshVerification, 'Ainda não foi possível confirmar o e-mail. Abra o link recebido e tente novamente.');
   };
 
   return (
@@ -104,7 +67,7 @@ export function LoginScreen() {
             <img src="/assets/ciseb-logo-light.svg" alt="CISEB — Centro de Inovação e Sustentabilidade da Educação Básica" className="h-12 w-auto max-w-full object-contain object-left" />
             <p className="mt-7 text-[11px] font-bold uppercase tracking-[0.22em] text-sky-200">Acesso institucional</p>
             <h1 className="mt-3 max-w-sm text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">Um espaço de apoio à formação e às práticas pedagógicas.</h1>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-blue-100/85">Entre com seu e-mail institucional para continuar suas consultas e acessar seu histórico.</p>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-blue-100/85">Entre com sua conta Google institucional para continuar suas consultas e acessar seu histórico.</p>
           </div>
           <div className="relative mt-7 flex items-end justify-between gap-4">
             <div className="flex items-center gap-2 text-xs text-blue-100/75"><ShieldCheck className="h-4 w-4" aria-hidden="true" /> Conta protegida pela SEDUC-PA</div>
@@ -116,65 +79,41 @@ export function LoginScreen() {
           {!configured ? (
             <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
               <h2 className="font-semibold">Autenticação ainda não configurada</h2>
-              <p className="mt-2">Preencha as variáveis `VITE_FIREBASE_*` conforme `docs/FIREBASE_SETUP.md` e reinicie o app. Nenhuma credencial privada deve ser colocada no frontend.</p>
-            </div>
-          ) : user && !user.emailVerified ? (
-            <div className="mx-auto w-full max-w-md">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-[#005BAC]"><Mail className="h-5 w-5" aria-hidden="true" /></span>
-              <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em] text-[#005BAC]">Confirme seu endereço</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Verifique seu e-mail institucional</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">Enviamos um link para <span className="font-semibold text-slate-800">{user.email}</span>. Abra a mensagem e depois confirme aqui para liberar o acesso.</p>
-              <div className="mt-6 space-y-3">
-                <button type="button" onClick={() => void handleRefreshVerification()} disabled={isBusy} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#005BAC] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] focus-visible:ring-offset-2 disabled:opacity-60">
-                  {isBusy ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />} Já verifiquei meu e-mail
-                </button>
-                <button type="button" onClick={() => void handleResendVerification()} disabled={isBusy || currentTime < resendAvailableAt} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] disabled:opacity-50">
-                  <RefreshCw className="h-4 w-4" aria-hidden="true" /> {currentTime < resendAvailableAt ? 'Aguarde para reenviar o e-mail' : 'Reenviar e-mail de verificação'}
-                </button>
-                <button type="button" onClick={() => void logout()} className="w-full py-2 text-xs font-medium text-slate-500 underline-offset-4 hover:text-[#005BAC] hover:underline">Sair desta conta</button>
-              </div>
+              <p className="mt-2">Configure as variáveis públicas `VITE_FIREBASE_*` conforme `docs/FIREBASE_SETUP.md` e gere novamente o frontend. Nunca coloque credenciais privadas no navegador.</p>
             </div>
           ) : (
             <div className="mx-auto w-full max-w-md">
               <div className="mb-8">
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#005BAC]">BOT CISEB</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{mode === 'login' ? 'Acesse sua conta' : 'Crie sua conta'}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">Use o endereço institucional <span className="font-medium text-slate-700">@escola.seduc.pa.gov.br</span>.</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Acesse com sua conta Google</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Permitidos: <span className="font-medium text-slate-700">@escola.seduc.pa.gov.br</span> e <span className="font-medium text-slate-700">@seduc.pa.gov.br</span>.
+                </p>
               </div>
 
               {initializationError && <p role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">{initializationError}</p>}
+              {(error || accessError) && (
+                <p role="alert" className="mb-4 flex gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm leading-5 text-rose-800">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  {error || accessError}
+                </p>
+              )}
 
-              {notice && <p role="status" className="mb-4 flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm leading-5 text-emerald-800"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{notice}</p>}
-              {error && <p role="alert" className="mb-4 flex gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm leading-5 text-rose-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{error}</p>}
+              <button
+                type="button"
+                onClick={() => void handleGoogleSignIn()}
+                disabled={isBusy}
+                className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+              >
+                {isBusy
+                  ? <LoaderCircle className="h-5 w-5 animate-spin text-[#005BAC]" aria-hidden="true" />
+                  : <span aria-hidden="true" className="text-lg font-bold text-[#4285F4]">G</span>}
+                Continuar com Google
+              </button>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="institutional-email" className="mb-1.5 block text-xs font-semibold text-slate-700">E-mail institucional</label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                    <input id="institutional-email" type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="nome@escola.seduc.pa.gov.br" className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#005BAC] focus:ring-4 focus:ring-[#005BAC]/10" />
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="institutional-password" className="mb-1.5 block text-xs font-semibold text-slate-700">Senha</label>
-                  <div className="relative">
-                    <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                    <input id="institutional-password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={6} value={password} onChange={event => setPassword(event.target.value)} className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-12 text-sm outline-none transition focus:border-[#005BAC] focus:ring-4 focus:ring-[#005BAC]/10" />
-                    <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]">
-                      {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-                    </button>
-                  </div>
-                </div>
-                <button type="submit" disabled={isBusy} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#005BAC] px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_-10px_rgba(0,91,172,0.65)] transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
-                  {isBusy && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}{mode === 'login' ? 'Entrar' : 'Cadastrar e verificar e-mail'}
-                </button>
-              </form>
-
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                {mode === 'login' && <button type="button" disabled={isBusy} onClick={() => void runAction(() => resetPassword(email), 'Se houver uma conta para este endereço, enviaremos instruções para redefinir a senha.')} className="font-medium text-[#005BAC] underline-offset-4 hover:underline disabled:opacity-50">Esqueci minha senha</button>}
-                {registrationEnabled && <button type="button" onClick={() => { setError(''); setNotice(''); setMode(value => value === 'login' ? 'register' : 'login'); }} className="ml-auto font-medium text-slate-600 underline-offset-4 hover:text-[#005BAC] hover:underline">{mode === 'login' ? 'Criar conta institucional' : 'Já tenho uma conta'}</button>}
-              </div>
-              <p className="mt-8 border-t border-slate-100 pt-4 text-center text-[11px] leading-5 text-slate-400">A senha é gerenciada pelo Firebase Authentication e não é armazenada pelo BOT CISEB.</p>
+              <p className="mt-8 border-t border-slate-100 pt-4 text-center text-[11px] leading-5 text-slate-400">
+                O Firebase Authentication gerencia sua sessão. O BOT CISEB não recebe nem armazena sua senha Google.
+              </p>
             </div>
           )}
         </div>

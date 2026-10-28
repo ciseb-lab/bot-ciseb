@@ -110,12 +110,27 @@ export function validateCurriculumCode(req: Request, res: Response, next: NextFu
   next();
 }
 
-export function hasVerifiedInstitutionalIdentity(claims: { uid?: unknown; email?: unknown; email_verified?: unknown }): claims is { uid: string; email: string; email_verified: true } {
+export function hasVerifiedInstitutionalIdentity(claims: {
+  uid?: unknown;
+  email?: unknown;
+  email_verified?: unknown;
+  firebase?: unknown;
+}): claims is {
+  uid: string;
+  email: string;
+  email_verified: true;
+  firebase: { sign_in_provider: 'google.com' };
+} {
+  const firebaseClaims = claims.firebase;
   return typeof claims.uid === 'string'
     && claims.uid.length > 0
     && claims.email_verified === true
     && typeof claims.email === 'string'
-    && isInstitutionalEmail(claims.email);
+    && isInstitutionalEmail(claims.email)
+    && typeof firebaseClaims === 'object'
+    && firebaseClaims !== null
+    && 'sign_in_provider' in firebaseClaims
+    && firebaseClaims.sign_in_provider === 'google.com';
 }
 
 export async function requireAppCheck(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -152,7 +167,7 @@ export async function requireInstitutionalIdentity(req: Request, res: Response, 
   try {
     const decoded = await adminAuth.verifyIdToken(match[1], true);
     if (!hasVerifiedInstitutionalIdentity(decoded)) {
-      res.status(403).json({ code: 'EMAIL_NOT_VERIFIED_OR_DOMAIN_NOT_ALLOWED', error: 'Verifique seu e-mail institucional autorizado antes de acessar este recurso.' });
+      res.status(403).json({ code: 'GOOGLE_INSTITUTIONAL_ACCOUNT_REQUIRED', error: 'Acesse com uma conta Google verificada de um domínio institucional autorizado.' });
       return;
     }
     req.identity = { uid: decoded.uid, email: decoded.email.toLowerCase() };

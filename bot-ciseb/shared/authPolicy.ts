@@ -1,4 +1,7 @@
-export const INSTITUTIONAL_EMAIL_DOMAINS = ['escola.seduc.pa.gov.br'] as const;
+export const INSTITUTIONAL_EMAIL_DOMAINS = [
+  'escola.seduc.pa.gov.br',
+  'seduc.pa.gov.br',
+] as const;
 
 export function isInstitutionalEmail(value: string): boolean {
   const email = value.trim().toLowerCase();
