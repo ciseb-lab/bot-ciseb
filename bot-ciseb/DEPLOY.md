@@ -15,6 +15,8 @@ Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis m�
 5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. A função `api/[...path].ts` encaminha as rotas da API para a aplicação Express; os assets do frontend são servidos pelo diretório `dist`.
 6. Configure as variáveis abaixo antes de criar o primeiro deployment. Não publique um deployment funcional sem autenticação do backend e CORS configurados.
 
+`@napi-rs/canvas` é uma dependência direta intencional: o PDF.js usado pelo `pdf-parse` precisa dela no runtime Node da Vercel para fornecer `DOMMatrix` e inicializar a leitura dos PDFs.
+
 ## Variáveis de ambiente na Vercel
 
 Configure em **Project Settings > Environment Variables**. Aplique as variáveis públicas nos ambientes que precisam de frontend (Production e Preview conforme a política de testes) e os segredos apenas nos ambientes de servidor aprovados.
