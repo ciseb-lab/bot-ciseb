@@ -1,6 +1,18 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { PDFParse } from 'pdf-parse';
+import { DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
+
+function installCanvasGlobal(name: 'DOMMatrix' | 'ImageData' | 'Path2D', value: unknown): void {
+  if (!(name in globalThis)) {
+    Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+  }
+}
+
+installCanvasGlobal('DOMMatrix', DOMMatrix);
+installCanvasGlobal('ImageData', ImageData);
+installCanvasGlobal('Path2D', Path2D);
+
+const { PDFParse } = await import('pdf-parse');
 
 const CHUNK_LENGTH = 1400;
 const CHUNK_OVERLAP = 180;

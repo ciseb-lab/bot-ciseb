@@ -15,7 +15,7 @@ Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis m�
 5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. As funções em `api/` encaminham as rotas conhecidas para a aplicação Express, incluindo endpoints aninhados de documentos e currículo; os assets do frontend são servidos pelo diretório `dist`.
 6. Configure as variáveis abaixo antes de criar o primeiro deployment. Não publique um deployment funcional sem autenticação do backend e CORS configurados.
 
-`@napi-rs/canvas` é uma dependência direta intencional: o PDF.js usado pelo `pdf-parse` precisa dela no runtime Node da Vercel para fornecer `DOMMatrix` e inicializar a leitura dos PDFs.
+`@napi-rs/canvas` é uma dependência direta intencional: a API importa seus tipos de canvas e inicializa `DOMMatrix`, `ImageData` e `Path2D` antes de carregar o `pdf-parse`. Isso evita depender do carregamento opcional dinâmico feito pelo PDF.js no runtime Node da Vercel.
 
 ## Variáveis de ambiente na Vercel
 
