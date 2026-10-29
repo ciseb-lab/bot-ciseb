@@ -26,3 +26,4 @@ firebase-debug.*.log
 !**/tsconfig*.json
 !**/metadata.json
 !firebase.emulator.json
+!vercel.json

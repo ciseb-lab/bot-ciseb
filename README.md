@@ -46,7 +46,7 @@ Os testes que dependem de Firebase podem ser executados com os emuladores confor
 
 ## Configuração de ambiente
 
-`.env.example` enumera nomes e valores vazios/fictícios para desenvolvimento. Configurações administrativas pertencem ao ambiente seguro do servidor/Secret Manager; as configurações `VITE_FIREBASE_*` são lidas pelo bundle web e não substituem Authentication, Security Rules ou autorização do servidor. Configure a origem do site em `APP_ORIGINS` e não habilite App Check obrigatório antes de configurar e testar a chave do provedor em cada ambiente.
+`.env.example` inclui a configuração pública do app Firebase Web; mantenha credenciais administrativas e demais segredos fora do arquivo. Configurações administrativas pertencem ao ambiente seguro do servidor/Secret Manager; as configurações `VITE_FIREBASE_*` são lidas pelo bundle web e não substituem Authentication, Security Rules ou autorização do servidor. Configure a origem do site em `APP_ORIGINS` e não habilite App Check obrigatório antes de configurar e testar a chave do provedor em cada ambiente.
 
 ## Documentos e respostas
 

@@ -13,9 +13,9 @@ Assistente de apoio à formação e às práticas pedagógicas da educação pú
 - Identidade e persistência: Firebase Authentication e Cloud Firestore com regras restritivas.
 - Documentos: PDFs locais indexados em trechos no início do servidor (RAG; não há retreinamento do modelo).
 - PDF: conteúdo revisado no cliente é enviado à API para geração do arquivo.
-- Deploy documentado: API Express no Render e frontend mantido no provedor atual; `firebase.json` ainda contém uma regra de rewrite legada para Cloud Run.
+- Deploy documentado: frontend Vite e API Express no Vercel; Firebase Authentication e Cloud Firestore fornecem identidade, histórico e limites.
 
-Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md), [segurança](docs/SECURITY.md), [custos Gemini](docs/AI_COST_OPTIMIZATION.md) e [deploy no Render](DEPLOY.md).
+Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md), [segurança](docs/SECURITY.md), [custos Gemini](docs/AI_COST_OPTIMIZATION.md) e [deploy no Vercel](DEPLOY.md).
 
 ## Pré-requisitos e execução local
 
@@ -25,7 +25,7 @@ Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md
 Na raiz do projeto:
 
 ```powershell
-Copy-Item .env.example .env.local
+Copy-Item ..\.env.example .env.local
 npm ci
 npm run dev
 ```
@@ -46,7 +46,7 @@ Os testes que dependem de Firebase podem ser executados com os emuladores confor
 
 ## Configuração de ambiente
 
-`.env.example` enumera nomes e valores vazios/fictícios para desenvolvimento. Segredos do backend devem permanecer nas variáveis seguras do ambiente de hospedagem; as configurações `VITE_FIREBASE_*` são lidas pelo bundle web e não substituem Authentication, Security Rules ou autorização do servidor. Configure a origem do site em `APP_ORIGINS` e não habilite App Check obrigatório antes de configurar e testar a chave do provedor em cada ambiente.
+`.env.example` inclui a configuração pública do app Firebase Web; mantenha credenciais administrativas e demais segredos fora do arquivo. Na Vercel, cadastre os segredos do backend no ambiente de servidor; `FIREBASE_SERVICE_ACCOUNT_JSON` nunca deve receber prefixo `VITE_`. As configurações `VITE_FIREBASE_*` são públicas e não substituem Authentication, Security Rules ou autorização do servidor. Configure a origem do site em `APP_ORIGINS` e não habilite App Check obrigatório antes de configurar e testar a chave do provedor em cada ambiente.
 
 ## Documentos e respostas
 
@@ -56,4 +56,4 @@ O modelo configurado é `gemini-3.5-flash-lite`. A resposta pode ficar incomplet
 
 ## Deploy e preservação de dados
 
-O guia [DEPLOY.md](DEPLOY.md) descreve a hospedagem do backend Express no Render e a configuração do frontend no provedor atual. A publicação no Render depende de resolver e validar a disponibilidade das credenciais ADC usadas pelo Firebase Admin; o guia não cria nem substitui essa integração. Históricos no `localStorage` não são migrados automaticamente: a pessoa usuária inicia a importação e mantém a cópia local. O Firestore mantém conversas até exclusão pelo usuário; não há política de expiração automática de histórico configurada. PDFs e documentos institucionais existentes devem ser preservados.
+O guia [DEPLOY.md](DEPLOY.md) descreve frontend e backend no Vercel. A API exige credenciais Firebase Admin seguras configuradas no ambiente do servidor; nenhum segredo é criado ou publicado pelo projeto. Históricos no `localStorage` não são migrados automaticamente: a pessoa usuária inicia a importação e mantém a cópia local. O Firestore mantém conversas até exclusão pelo usuário; não há política de expiração automática de histórico configurada. PDFs e documentos institucionais existentes devem ser preservados.

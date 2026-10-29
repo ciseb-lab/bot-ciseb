@@ -4,7 +4,7 @@
 
 1. Use o projeto Firebase institucional existente ou crie um projeto aprovado pela instituição. A política do aplicativo aceita somente `escola.seduc.pa.gov.br` e `seduc.pa.gov.br`.
 2. Registre um app Web e configure no ambiente de build do frontend os valores de `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` e `VITE_FIREBASE_APP_ID`. São configurações públicas do SDK Web, não credenciais Admin.
-3. Defina `FIREBASE_PROJECT_ID` no backend para o mesmo projeto. Em produção, use a identidade de serviço do Cloud Run e Application Default Credentials; não envie JSON de service account ao navegador, repositório, logs ou imagem.
+3. Defina `FIREBASE_PROJECT_ID` no backend para o mesmo projeto. No Vercel, o backend aceita o JSON de uma service account aprovada exclusivamente pela variável secreta `FIREBASE_SERVICE_ACCOUNT_JSON`. Nunca coloque esse JSON no navegador, Git, logs ou imagem. Em ambientes Google Cloud com identidade anexada, ADC continua disponível.
 
 ## Authentication
 

@@ -24,9 +24,9 @@ O Express confia em zero proxies por padrão e usa um salto em Cloud Run (`K_SER
 
 - `APP_ORIGINS` é uma lista explícita de origens completas; produção falha ao iniciar sem origem configurada.
 - Validação de entrada e limite do parser Express precedem Gemini/PDF. Há timeout configurável de 45 s para Gemini.
-- `GEMINI_API_KEY` e ADC pertencem exclusivamente ao ambiente servidor/Secret Manager. Nunca use a chave em código ou variável `VITE_*`.
+- `GEMINI_API_KEY` e credenciais Firebase Admin pertencem exclusivamente ao ambiente de servidor/secret manager. No Vercel, `FIREBASE_SERVICE_ACCOUNT_JSON` é um segredo de servidor; nunca use prefixo `VITE_`, nem exponha o valor em código, arquivos públicos, Git ou logs.
 - Não registre conteúdo, tokens, e-mails, senhas, chaves nem prompts. Logs atuais registram eventos, códigos, tempos e uso de tokens sem corpo.
-- Arquivos `.env*` reais são excluídos dos controles de fonte/pacotes; mantenha o `.env.example` sem valores reais. `node_modules/`, `dist/`, `.aistudio/` e ferramentas locais são artefatos, não fonte.
+- Arquivos `.env*` reais são excluídos dos controles de fonte/pacotes; o `.env.example` pode conter apenas configurações públicas do Firebase Web, nunca segredos ou credenciais administrativas. `node_modules/`, `dist/`, `.aistudio/` e ferramentas locais são artefatos, não fonte.
 - O diretório `dist/` é gerado e necessário ao deploy estático; não remova arquivos de deploy como limpeza local automática.
 
 ## Dados, retenção e incidentes

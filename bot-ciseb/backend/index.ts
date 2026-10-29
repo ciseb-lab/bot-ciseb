@@ -1,7 +1,6 @@
 import express from 'express';
 import type { ErrorRequestHandler } from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import {
   CURRICULUM_CATALOG_RECORDS,
@@ -20,8 +19,6 @@ import { generatePdf } from './pdfExport.ts';
 import { securityLimits, rateLimit, limitConcurrentChats, requireAppCheck, requireInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery, validateCurriculumCode } from './security.ts';
 import { isFirebaseAdminConfigured } from './firebaseAdmin.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT) || 3000;
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
@@ -36,9 +33,8 @@ const trustedProxyHops = Number.isInteger(configuredProxyHops) && configuredProx
   ? configuredProxyHops
   : (process.env.K_SERVICE ? 1 : 0);
 
-const app = express();
+export const app = express();
 app.set('trust proxy', trustedProxyHops > 0 ? trustedProxyHops : false);
-app.get('/health', (_req, res) => res.json({ status: 'ok', documentsReady: Boolean(documentIndex) }));
 if (isProd && allowedOrigins.size === 0) {
   throw new Error('APP_ORIGINS precisa conter as origens HTTPS autorizadas em produção.');
 }
@@ -62,6 +58,22 @@ app.use((req, res, next) => {
   return next();
 });
 app.use(express.json({ limit: process.env.API_JSON_LIMIT || '200kb', strict: true }));
+app.use('/api', async (_req, _res, next) => {
+  try {
+    await initializeBackend();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+app.get('/health', async (_req, res, next) => {
+  try {
+    await initializeBackend();
+    res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });
+  } catch (error) {
+    next(error);
+  }
+});
 app.use('/api', requireAppCheck, requireInstitutionalIdentity);
 
 // Initialize server-side Gemini client
@@ -394,6 +406,15 @@ app.post(
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint da API não encontrado.' }));
 
+if (isProd) {
+  const frontendDirectory = path.resolve(process.cwd(), 'dist');
+  app.use(express.static(frontendDirectory, { index: false }));
+  app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(frontendDirectory, 'index.html'));
+  });
+}
+
 const requestErrorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
   const details = error as { status?: number; statusCode?: number; type?: string };
   const status = details.statusCode || details.status || 500;
@@ -409,20 +430,36 @@ const requestErrorHandler: ErrorRequestHandler = (error: unknown, _req, res, _ne
 };
 app.use(requestErrorHandler);
 
-// The local developer server also serves Vite. In production the frontend is
-// hosted separately and calls this API using its configured base URL.
-async function startServer() {
-  if (isProd && !process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY precisa ser configurada como variável secreta do backend em produção.');
-  if (isProd && !isFirebaseAdminConfigured()) throw new Error('Configure FIREBASE_PROJECT_ID e a identidade Firebase Admin do ambiente de produção.');
-  documentIndex = await loadDocumentIndex(path.join(__dirname, 'documents'));
-  console.log(
-    `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis.`
-  );
-  if (documentIndex.sourcesWithoutText.length > 0) {
-    console.warn(
-      `PDFs sem texto pesquisável (OCR necessário): ${documentIndex.sourcesWithoutText.join(', ')}`
-    );
+// The local developer server also serves Vite; production serves the built app.
+let backendInitialization: Promise<void> | undefined;
+
+async function initializeBackend(): Promise<void> {
+  if (!backendInitialization) {
+    backendInitialization = (async () => {
+      if (isProd && !process.env.GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY precisa ser configurada como variável secreta do backend em produção.');
+      }
+      if (isProd && !isFirebaseAdminConfigured()) {
+        throw new Error('Configure FIREBASE_PROJECT_ID e credenciais Firebase Admin válidas para o ambiente de produção.');
+      }
+      const documentsDirectory = process.env.DOCUMENTS_DIR
+        || path.resolve(process.cwd(), 'backend', 'documents');
+      documentIndex = await loadDocumentIndex(documentsDirectory);
+      console.log(
+        `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis.`
+      );
+      if (documentIndex.sourcesWithoutText.length > 0) {
+        console.warn(
+          `PDFs sem texto pesquisável (OCR necessário): ${documentIndex.sourcesWithoutText.join(', ')}`
+        );
+      }
+    })();
   }
+  await backendInitialization;
+}
+
+export async function startServer() {
+  await initializeBackend();
 
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
@@ -431,8 +468,6 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
-    app.use((_req, res) => res.status(404).json({ error: 'Recurso não encontrado.' }));
   }
 
   const server = app.listen(PORT, '0.0.0.0', () => {
@@ -446,5 +481,3 @@ async function startServer() {
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
 }
-
-startServer();

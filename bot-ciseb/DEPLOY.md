@@ -1,92 +1,82 @@
-# Deploy do Bot CISEB
+# Deploy do Bot CISEB na Vercel
 
 ## Arquitetura
 
-O backend Express pode ser hospedado como um Web Service gratuito no Render. O frontend continua no provedor atual (por exemplo, Vercel ou Firebase Hosting) e chama a API pela variável de build `VITE_API_BASE_URL`. O modelo Gemini e os documentos institucionais permanecem no backend.
+Este projeto publica o frontend React/Vite e o backend Express no mesmo projeto Vercel. O Express é executado como Vercel Function; os assets do build e os PDFs institucionais são incluídos no bundle conforme `vercel.json`. A API permanece no mesmo domínio do frontend, portanto `VITE_API_BASE_URL` pode ficar vazia.
 
-O projeto já lê `process.env.PORT`, escuta em `0.0.0.0` e possui `GET /health`. Não é necessário Docker para o deploy nativo. O `Dockerfile` existente não precisa ser usado.
+Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis mínimos, histórico individual e contadores de uso. Gemini é chamado pelo backend; sua chave nunca deve ser configurada em `VITE_*`.
 
-## Pré-requisito importante: Firebase Admin
+## Conectar o repositório
 
-A API atual usa Firebase Admin para validar o ID token e App Check, além de usar Firestore para os limites distribuídos. `backend/firebaseAdmin.ts` inicializa o Admin SDK com Application Default Credentials (ADC); o Render não fornece automaticamente a identidade Google Cloud disponível no Cloud Run.
+1. Importe `https://github.com/ciseb-lab/bot-ciseb` na Vercel.
+2. Em **Root Directory**, escolha `bot-ciseb` — não a raiz do repositório, que também contém uma versão antiga do app.
+3. Use Node.js 24 ou a versão LTS suportada pela Vercel.
+4. Configure o install command como `npm ci --include=dev`. A pasta do app deve conter `package-lock.json`.
+5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. O entrypoint `server.ts` exporta a aplicação Express e inclui o frontend compilado e `backend/documents/`.
+6. Configure as variáveis abaixo antes de criar o primeiro deployment. Não publique um deployment funcional sem autenticação do backend e CORS configurados.
 
-Por isso, a implantação do backend no Render **não está pronta para produção até que haja uma solução de credenciais aprovada para o Firebase Admin**. A presença de `FIREBASE_PROJECT_ID` sozinha não garante que o backend consiga validar tokens ou acessar Firestore. Esta atualização não cria nem documenta credenciais administrativas como requisito, não altera a integração e não publica o serviço. Não prossiga com tráfego de usuários até esse ponto ser resolvido e testado.
+## Variáveis de ambiente na Vercel
 
-## Criar o Web Service no Render
+Configure em **Project Settings > Environment Variables**. Aplique as variáveis públicas nos ambientes que precisam de frontend (Production e Preview conforme a política de testes) e os segredos apenas nos ambientes de servidor aprovados.
 
-1. No Render, escolha **New > Web Service** e conecte o repositório GitHub existente.
-2. Selecione a branch usada para publicação.
-3. Configure:
+| Variável | Tipo | Uso |
+|---|---|---|
+| `VITE_FIREBASE_API_KEY` | Pública, build | Firebase Web SDK |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Pública, build | Normalmente `<project-id>.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID` | Pública, build | O mesmo projeto Firebase do backend |
+| `VITE_FIREBASE_APP_ID` | Pública, build | ID do app Web registrado no Firebase |
+| `VITE_API_BASE_URL` | Pública, build | Deixe vazia para usar API e frontend no mesmo domínio |
+| `FIREBASE_PROJECT_ID` | Servidor | ID do mesmo projeto Firebase |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | **Segredo de servidor** | JSON completo de uma service account aprovada; usado pelo Firebase Admin no runtime Vercel |
+| `GEMINI_API_KEY` | **Segredo de servidor** | Chave Gemini existente |
+| `APP_ORIGINS` | Servidor | Origem HTTPS exata do site publicado, sem barra final, por exemplo `https://seu-projeto.vercel.app` |
+| `APP_CHECK_REQUIRED` | Servidor, opcional | Só `true` depois de configurar e testar App Check no frontend e API |
+| `VITE_FIREBASE_APP_CHECK_ENABLED` | Pública, build, opcional | `true` somente com App Check pronto |
+| `VITE_FIREBASE_APP_CHECK_SITE_KEY` | Pública, build, opcional | Site key do provedor configurado no Firebase |
 
-   | Campo | Valor |
-   |---|---|
-   | Name | Nome de sua escolha |
-   | Language | Node |
-   | Root Directory | `bot-ciseb` (diretório do app que contém `package.json`) |
-   | Instance Type | **Free** |
-   | Build Command | `npm ci --include=dev` |
-   | Start Command | `npm start` |
-   | Health Check Path | `/health` |
+O exemplo de nomes sem valores fica em `../.env.example`. `NODE_ENV`, `PORT` e `VERCEL` são fornecidos pela plataforma; não invente valores de credenciais.
 
-O comando de instalação inclui `devDependencies` porque o script atual `start` executa `tsx`, listado nessa seção do `package.json`. O build Vite não é necessário no serviço da API: o frontend é publicado separadamente. `npm run build` continua sendo o comando para compilar o frontend. O Render fornece `PORT`; não fixe esse valor manualmente.
+### Credenciais do Firebase Admin
 
-O Render usa Node 24.22.1 por padrão para novos serviços segundo a documentação consultada em 28/10/2026. O ambiente local deste projeto usa Node 24.19.0. Para fixar a versão no painel, configure `NODE_VERSION=24.22.1` e valide o primeiro deploy; o `Dockerfile` existente não é usado nessa configuração nativa.
+O backend verifica ID tokens, verifica revogação e grava contadores Firestore com Admin SDK. A Vercel não fornece Application Default Credentials de uma service account do projeto Firebase. O código aceita ADC em outros hosts e, na Vercel, exige `FIREBASE_SERVICE_ACCOUNT_JSON`.
 
-Na organização do repositório, o pacote npm permanece na raiz do app; `backend/` e `frontend/` são diretórios de código-fonte, não raízes independentes de instalação.
+Antes de configurar esse segredo:
 
-## Variáveis do backend
+- Obtenha aprovação do administrador do projeto e use uma identidade dedicada com somente as permissões necessárias para verificar usuários e acessar Firestore.
+- Se a política institucional permitir chave de service account, configure o JSON integral como variável secreta de servidor na Vercel; nunca use variável `VITE_*`, arquivo público, Git, chat, logs ou saída de terminal.
+- Não gere nem compartilhe uma chave sem aprovação. Prefira federação de identidade sem chave longa quando disponível e aprovada pela instituição.
+- Não ative billing para resolver autenticação. O método de credencial é uma decisão de segurança independente do plano Firebase.
 
-Configure as variáveis em **Environment** no painel do Render. Não inclua segredos em arquivos do repositório nem em variáveis `VITE_*`.
+Sem esse segredo (ou uma integração de credenciais sem chave compatível implementada), o backend falha fechado e as rotas protegidas não funcionam.
 
-| Variável | Valor/uso |
-|---|---|
-| `NODE_ENV` | `production` |
-| `GEMINI_API_KEY` | Chave existente do Gemini, cadastrada como variável secreta. |
-| `APP_ORIGINS` | Origens exatas do frontend, separadas por vírgula e sem barra final, por exemplo `https://seu-site.example`. |
-| `FIREBASE_PROJECT_ID` | ID do projeto Firebase já utilizado pela aplicação. |
-| `PORT` | Fornecida pelo Render; não configurar manualmente. |
-| `TRUST_PROXY_HOPS` | Só definir após validar o endereço IP observado pela aplicação e a topologia de proxy. O rate limit por IP depende dessa configuração. |
+## Firebase Console
 
-Os limites e ajustes opcionais existentes estão listados em `.env.example`. Não copie valores secretos de arquivos locais. `APP_CHECK_REQUIRED` permanece conforme a política já aprovada para o ambiente e não deve ser ativada sem validar o cliente e a API.
+1. Em Authentication, mantenha Google habilitado e adicione o domínio de produção do Vercel (e domínios de Preview somente se forem usados) à lista de domínios autorizados.
+2. A política do app permite apenas contas verificadas com `@escola.seduc.pa.gov.br` ou `@seduc.pa.gov.br`. Habilitar Google não restringe automaticamente domínios; o cliente, API e regras verificam essa política.
+3. Mantenha o Cloud Firestore existente. A aplicação grava histórico diretamente como `users/{uid}/conversations/...`; regras seguras precisam estar publicadas para os dois domínios e login Google.
+4. Antes de publicar mudanças de regras, execute `npm run test:firestore-rules` em ambiente com Java e Firebase CLI. Esse teste usa projeto `demo-*` no emulador, não o banco real.
+5. Não crie coleções ou usuários manualmente. O perfil e as conversas são criados pela aplicação após login autorizado.
 
-### CORS e proxy
+## Limites e custos
 
-`APP_ORIGINS` deve conter a origem HTTPS real do frontend. Não use `*` nem inclua a URL do backend como substituta da origem do site. Em desenvolvimento, os padrões locais existentes continuam válidos.
+Vercel Functions executa o Express sob limites de duração, tamanho de bundle, memória e cotas do plano escolhido. O carregamento dos PDFs ocorre sob demanda em cada instância fria; acompanhe logs e duração antes de uso amplo. A configuração não habilita faturamento nem cria recursos Firebase.
 
-O serviço já escuta em `0.0.0.0` e na porta `PORT`, conforme exigido pelo Render. O valor padrão de `TRUST_PROXY_HOPS` não presume a topologia Render; confirme-a antes de habilitar confiança nos cabeçalhos encaminhados. CORS não é autenticação: a API continua exigindo a identidade Firebase existente.
+Firebase Authentication e Firestore têm cotas gratuitas sujeitas ao plano e uso. A API grava contadores distribuídos no Firestore, além do histórico; exceder cotas pode interromper chamadas ou gerar custos conforme o plano do projeto. Gemini tem cotas/custos próprios independentes. Não habilite billing sem aprovação.
 
-## Configurar o frontend
+## Validação antes do tráfego de usuários
 
-No provedor atual do frontend, configure `VITE_API_BASE_URL` com a URL HTTPS raiz do Web Service Render, sem `/api` e sem barra final, por exemplo `https://seu-servico.onrender.com`. Faça um novo build/publicação do frontend após mudar a variável.
-
-Configure também as variáveis públicas `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` e `VITE_FIREBASE_APP_ID` já usadas pelo app. Se App Check estiver habilitado para o frontend, mantenha também suas variáveis públicas correspondentes. A chave Gemini e credenciais administrativas nunca pertencem ao frontend.
-
-Com `VITE_API_BASE_URL` configurada, `src/utils/api.ts` direciona chamadas diretamente ao Render. Para isso, `APP_ORIGINS` precisa permitir a origem do frontend. A regra `/api/**` existente em `firebase.json` ainda aponta para Cloud Run e não deve ser considerada o encaminhamento para o Render.
-
-## Arquivos incluídos no backend
-
-Mantenha `backend/` e `shared/` no repositório, assim como `frontend/` para o build do cliente. Os nove PDFs de `backend/documents/` são carregados e indexados ao iniciar; os caminhos são resolvidos a partir da localização do código, não dependem de arquivos enviados pelo usuário nem de diretório persistente.
-
-O índice é reconstruído a cada inicialização. O sistema de arquivos do Render Free é efêmero, mas os PDFs versionados são parte do deploy e a geração de PDF atual ocorre em memória. Não armazene dados persistentes no disco local do serviço.
-
-## Limitações e custos
-
-O serviço Free entra em repouso após 15 minutos sem tráfego e pode levar cerca de um minuto para voltar. Pode reiniciar, não tem disco persistente e está sujeito a cotas mensais de instância, banda e minutos de build; ao excedê-las, o serviço ou novos deploys podem ser suspensos, especialmente sem método de pagamento. Não há garantia de disponibilidade contínua.
-
-O plano Render não elimina cotas nem eventuais custos externos do Gemini ou do Firebase. Verifique os limites e a forma de faturamento desses provedores separadamente. Esta configuração não exige adicionar cartão ou habilitar faturamento no Render, mas também não garante uso gratuito dos serviços externos.
-
-## Validação antes de publicar para usuários
-
-1. Execute `npm ci`, `npm test`, `npm run lint` e `npm run build` localmente.
-2. Após o deploy, confirme `GET https://URL-DO-RENDER/health` e `documentsReady: true`.
-3. Teste o preflight CORS da origem real do frontend e confirme que uma origem não autorizada é recusada.
-4. Com a solução Firebase Admin aprovada e validada, teste sessão verificada, App Check conforme configuração, cotas, chat, consulta/download de PDFs e exportação.
-5. Teste os limites por IP após configurar `TRUST_PROXY_HOPS`, e confirme respostas 429 sem expor dados pessoais.
-6. Faça o smoke test do frontend com a URL Render de produção. Chamadas Gemini reais podem consumir cota/custo e devem ser controladas.
+1. `npm ci --include=dev`, `npm test`, `npm run lint` e `npm run build`.
+2. No Vercel Preview, valide `/health`, login Google nos dois domínios permitidos, rejeição de domínios externos, sessão expirada, Firestore por UID, chat, documentos e exportação PDF.
+3. Confirme que uma conta não consegue ler ou gravar o histórico de outra.
+4. Verifique CORS: origens não listadas em `APP_ORIGINS` devem ser recusadas.
+5. Não use contas ou conversas reais em testes de regras; não faça chamadas Gemini sem controlar o consumo.
 
 ## Referências oficiais
 
-- [Render: Free instances e limitações](https://render.com/docs/free)
-- [Render: Web Services e binding de porta](https://render.com/docs/web-services)
-- [Render: versões Node.js](https://render.com/docs/node-version)
-- [Render: variáveis e arquivos secretos](https://render.com/docs/configure-environment-variables)
+- [Vercel: Express](https://vercel.com/docs/frameworks/backend/express)
+- [Vercel: Node.js Functions](https://vercel.com/docs/functions/runtimes/node-js)
+- [Vercel: configuração `vercel.json`](https://vercel.com/docs/project-configuration/vercel-json)
+- [Vercel: Vite](https://vercel.com/docs/frameworks/frontend/vite)
+- [Firebase: Google Sign-In](https://firebase.google.com/docs/auth/web/google-signin)
+- [Firebase: Admin SDK setup](https://firebase.google.com/docs/admin/setup)
+- [Firebase: Firestore Security Rules](https://firebase.google.com/docs/firestore/security/get-started)
