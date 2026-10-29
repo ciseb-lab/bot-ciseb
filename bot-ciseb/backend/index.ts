@@ -66,7 +66,7 @@ app.use('/api', async (_req, _res, next) => {
     next(error);
   }
 });
-app.get('/health', async (_req, res, next) => {
+app.get(['/health', '/api/health'], async (_req, res, next) => {
   try {
     await initializeBackend();
     res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });

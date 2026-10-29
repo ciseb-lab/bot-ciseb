@@ -12,7 +12,7 @@ Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis m�
 2. Em **Root Directory**, escolha `bot-ciseb` — não a raiz do repositório, que também contém uma versão antiga do app.
 3. Use Node.js 24 ou a versão LTS suportada pela Vercel.
 4. Configure o install command como `npm ci --include=dev`. A pasta do app deve conter `package-lock.json`.
-5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. O entrypoint `server.ts` exporta a aplicação Express e inclui o frontend compilado e `backend/documents/`.
+5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. A função `api/[...path].ts` encaminha as rotas da API para a aplicação Express; os assets do frontend são servidos pelo diretório `dist`.
 6. Configure as variáveis abaixo antes de criar o primeiro deployment. Não publique um deployment funcional sem autenticação do backend e CORS configurados.
 
 ## Variáveis de ambiente na Vercel
