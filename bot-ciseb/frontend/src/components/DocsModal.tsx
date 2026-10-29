@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookCheck, Download, ExternalLink, FileText, LoaderCircle, X } from 'lucide-react';
-import { apiFetch, downloadApiFile } from '../utils/api.ts';
+import { apiFetch, downloadApiFile, readApiJson } from '../utils/api.ts';
 
 interface DocumentSummary {
   source: string;
@@ -32,9 +32,13 @@ export const DocsModal: React.FC<DocsModalProps> = ({ isOpen, onClose }) => {
     setError(null);
     apiFetch('/api/documents/status')
       .then(async response => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Não foi possível carregar as fontes.');
-        return data as DocumentStatus;
+        const data = await readApiJson(response);
+        if (!data || typeof data !== 'object') throw new Error('A API documental retornou uma resposta inválida.');
+        const result = data as DocumentStatus & { error?: unknown };
+        if (!response.ok) {
+          throw new Error(typeof result.error === 'string' ? result.error : 'Não foi possível carregar as fontes.');
+        }
+        return result;
       })
       .then(data => {
         if (isMounted) setStatus(data);

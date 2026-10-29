@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Bot, Check, Copy, FileDown, LogOut, PanelLeftOpen, RefreshCw, Sparkles } from 'lucide-react';
-import { apiFetch, downloadApiFile } from '../utils/api.ts';
+import { apiFetch, downloadApiFile, readApiJson } from '../utils/api.ts';
 import { CurriculumSkill } from '../../../shared/curriculumData.ts';
 import { MarkdownText } from './MarkdownText.tsx';
 
@@ -78,11 +78,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const controller = new AbortController();
     apiFetch('/api/documents/status', { signal: controller.signal })
       .then(response => {
-        if (!response.ok) throw new Error('Documentos indisponíveis');
-        return response.json();
+        return readApiJson(response).then(data => {
+          if (!response.ok || !data || typeof data !== 'object') throw new Error('Documentos indisponíveis');
+          return data as { ready?: unknown; documentCount?: unknown };
+        });
       })
-      .then((status: { ready: boolean; documentCount: number }) => {
-        if (!status.ready || !Number.isFinite(status.documentCount)) throw new Error('Base indisponível');
+      .then(status => {
+        if (status.ready !== true || typeof status.documentCount !== 'number' || !Number.isFinite(status.documentCount)) {
+          throw new Error('Base indisponível');
+        }
         setDocumentCount(status.documentCount);
       })
       .catch(error => {

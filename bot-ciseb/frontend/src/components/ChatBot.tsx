@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Copy, Check, Printer, ShieldCheck, RefreshCw, FileText, Compass, AlertCircle } from 'lucide-react';
 import { extractMarkdownTables } from '../utils/formatters.ts';
-import { apiFetch } from '../utils/api.ts';
+import { apiFetch, readApiJson } from '../utils/api.ts';
 import { CurriculumSkill } from '../../../shared/curriculumData.ts';
 import { MarkdownText } from './MarkdownText.tsx';
 
@@ -100,14 +100,18 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onOpenPrint, externalQuery, on
         throw new Error('Falha na resposta do servidor.');
       }
 
-      const data = await response.json();
+      const data = await readApiJson(response);
+      if (!data || typeof data !== 'object' || !('reply' in data) || typeof data.reply !== 'string') {
+        throw new Error('A API retornou uma resposta inválida.');
+      }
+      const result = data as { reply: string; groundedSkills?: unknown };
 
       const assistantMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: data.reply,
+        content: result.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        groundedSkills: data.groundedSkills || [],
+        groundedSkills: Array.isArray(result.groundedSkills) ? result.groundedSkills : [],
       };
 
       setMessages(prev => [...prev, assistantMsg]);

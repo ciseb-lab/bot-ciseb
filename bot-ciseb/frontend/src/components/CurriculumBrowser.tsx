@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, BookOpen, CheckCircle, AlertTriangle, ArrowRight, Copy, Check, ExternalLink } from 'lucide-react';
 import { CURRICULUM_CATALOG_RECORDS, CurriculumSkill } from '../../../shared/curriculumData.ts';
-import { apiFetch } from '../utils/api.ts';
+import { apiFetch, readApiJson } from '../utils/api.ts';
 
 interface CurriculumBrowserProps {
   onSelectSkillForPlan: (skill: CurriculumSkill) => void;
@@ -55,7 +55,9 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
     setIsValidating(true);
     try {
       const response = await apiFetch(`/api/curriculum/validate/${encodeURIComponent(testCodeInput.trim())}`);
-      const result = await response.json() as {
+      const data = await readApiJson(response);
+      if (!data || typeof data !== 'object') throw new Error('A API curricular retornou uma resposta inválida.');
+      const result = data as {
         valid?: boolean;
         foundInCatalog?: boolean;
         skill?: CurriculumSkill;

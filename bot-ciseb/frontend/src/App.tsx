@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from 'firebase/auth';
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { X } from 'lucide-react';
-import { apiFetch } from './utils/api.ts';
+import { apiFetch, readApiJson } from './utils/api.ts';
 import { useAuth } from './auth/AuthContext.tsx';
 import { LoginScreen } from './components/LoginScreen.tsx';
 import { deleteConversation, getMessagePage, importLegacyConversations, listConversations, persistMessage } from './data/conversationStore.ts';
@@ -347,14 +347,23 @@ function AuthenticatedApp({ user }: { user: User }) {
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok || typeof data.reply !== 'string') {
-        throw new Error(typeof data.error === 'string' ? data.error : 'Não foi possível consultar o assistente.');
+      const data = await readApiJson(response);
+      if (!data || typeof data !== 'object') {
+        throw new Error('A API retornou uma resposta inválida.');
+      }
+      const result = data as {
+        reply?: unknown;
+        error?: unknown;
+        groundedSkills?: unknown;
+        groundedDocuments?: unknown;
+      };
+      if (!response.ok || typeof result.reply !== 'string') {
+        throw new Error(typeof result.error === 'string' ? result.error : 'Não foi possível consultar o assistente.');
       }
 
-      const assistantMessage = createMessage('assistant', data.reply, {
-        groundedSkills: Array.isArray(data.groundedSkills) ? data.groundedSkills : [],
-        groundedDocuments: Array.isArray(data.groundedDocuments) ? data.groundedDocuments : [],
+      const assistantMessage = createMessage('assistant', result.reply, {
+        groundedSkills: Array.isArray(result.groundedSkills) ? result.groundedSkills as CurriculumSkill[] : [],
+        groundedDocuments: Array.isArray(result.groundedDocuments) ? result.groundedDocuments as GroundedDocumentReference[] : [],
       });
       appendMessage(sessionId, assistantMessage, conversationTitle);
       await persistMessage(user.uid, sessionId, conversationTitle, assistantMessage);

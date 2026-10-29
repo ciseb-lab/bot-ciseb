@@ -8,6 +8,22 @@ export function apiUrl(path: string): string {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
+export async function readApiJson(response: Response): Promise<unknown> {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    if (!response.ok) {
+      throw new Error(`A API retornou erro HTTP ${response.status}. Verifique os logs da Function na Vercel.`);
+    }
+    throw new Error('A API retornou uma resposta em formato inesperado.');
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    throw new Error('A API retornou JSON inválido.');
+  }
+}
+
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   const firebaseHeaders = await firebaseRequestHeaders();
