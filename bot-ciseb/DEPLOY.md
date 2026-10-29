@@ -12,7 +12,7 @@ Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis m�
 2. Em **Root Directory**, escolha `bot-ciseb` — não a raiz do repositório, que também contém uma versão antiga do app.
 3. Use Node.js 24 ou a versão LTS suportada pela Vercel.
 4. Configure o install command como `npm ci --include=dev`. A pasta do app deve conter `package-lock.json`.
-5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. As funções em `api/` encaminham as rotas conhecidas para a aplicação Express, incluindo endpoints aninhados de documentos e currículo; os assets do frontend são servidos pelo diretório `dist`.
+5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. As funções em `api/` encaminham as rotas conhecidas para a aplicação Express, incluindo endpoints aninhados de documentos e currículo; os assets do frontend são servidos pelo diretório `dist`. Depois do deploy, confirme `/api/health` e, com sessão institucional válida, `/api/documents/status`.
 6. Configure as variáveis abaixo antes de criar o primeiro deployment. Não publique um deployment funcional sem autenticação do backend e CORS configurados.
 
 `@napi-rs/canvas` é uma dependência direta intencional: a API importa seus tipos de canvas e inicializa `DOMMatrix`, `ImageData` e `Path2D` antes de carregar o `pdf-parse`. Isso evita depender do carregamento opcional dinâmico feito pelo PDF.js no runtime Node da Vercel.
@@ -68,7 +68,7 @@ Firebase Authentication e Firestore têm cotas gratuitas sujeitas ao plano e uso
 ## Validação antes do tráfego de usuários
 
 1. `npm ci --include=dev`, `npm test`, `npm run lint` e `npm run build`.
-2. No Vercel Preview, valide `/health`, login Google nos dois domínios permitidos, rejeição de domínios externos, sessão expirada, Firestore por UID, chat, documentos e exportação PDF.
+2. No Vercel Preview, valide `/api/health`, login Google nos dois domínios permitidos, rejeição de domínios externos, sessão expirada, Firestore por UID, chat, documentos e exportação PDF. A verificação de saúde é pública e leve; documentos são inicializados na primeira chamada autenticada à API.
 3. Confirme que uma conta não consegue ler ou gravar o histórico de outra.
 4. Verifique CORS: origens não listadas em `APP_ORIGINS` devem ser recusadas.
 5. Não use contas ou conversas reais em testes de regras; não faça chamadas Gemini sem controlar o consumo.

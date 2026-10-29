@@ -39,6 +39,21 @@ export interface RateLimitAttempt {
 
 type RateLimitCheck = (attempt: RateLimitAttempt) => Promise<RateLimitDecision>;
 
+const INVALID_ID_TOKEN_ERROR_CODES = new Set([
+  'auth/argument-error',
+  'auth/id-token-expired',
+  'auth/id-token-revoked',
+  'auth/invalid-id-token',
+  'auth/user-disabled',
+]);
+
+export function isKnownInvalidIdTokenError(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error) || typeof error.code !== 'string') {
+    return false;
+  }
+  return INVALID_ID_TOKEN_ERROR_CODES.has(error.code);
+}
+
 function configuredPositiveInteger(name: string, fallback: number): number {
   const parsed = Number(process.env[name]);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -172,8 +187,17 @@ export async function requireInstitutionalIdentity(req: Request, res: Response, 
     }
     req.identity = { uid: decoded.uid, email: decoded.email.toLowerCase() };
     next();
-  } catch {
-    res.status(401).json({ code: 'SESSION_EXPIRED', error: 'Sua sessão expirou. Entre novamente para continuar.' });
+  } catch (error) {
+    if (isKnownInvalidIdTokenError(error)) {
+      res.status(401).json({ code: 'SESSION_EXPIRED', error: 'Sua sessão expirou. Entre novamente para continuar.' });
+      return;
+    }
+
+    const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : 'unknown';
+    console.error(JSON.stringify({ severity: 'ERROR', event: 'id_token_verification_failed', code }));
+    res.status(503).json({ code: 'AUTH_VERIFICATION_UNAVAILABLE', error: 'Não foi possível validar sua sessão no servidor. Tente novamente em instantes.' });
   }
 }
 

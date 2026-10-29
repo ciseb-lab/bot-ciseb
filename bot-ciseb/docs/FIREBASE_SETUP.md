@@ -42,7 +42,7 @@ rateLimitCounters/{counterId}                    # somente Firebase Admin
 
 `firebase.json` declara Authentication Emulator (`127.0.0.1:9099`) e Firestore Emulator (`127.0.0.1:8080`). Com Firebase CLI instalado, inicie-os com o mesmo project ID definido em `FIREBASE_PROJECT_ID` e `VITE_FIREBASE_PROJECT_ID`. Use `VITE_USE_FIREBASE_EMULATORS=true` para conectar o SDK Web e configure `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099` e `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` no processo Node. Deixe App Check opcional no emulador.
 
-Para um Firebase real local, use ADC no backend e nunca copie credenciais para `.env.example`. O servidor carrega `.env.local` e `.env`; `.gitignore`, `.dockerignore` e `.npmignore` excluem arquivos `.env` reais. Configure os valores sem mostrá-los em terminal compartilhado ou logs.
+Para um Firebase real local, configure ADC (por exemplo, `GOOGLE_APPLICATION_CREDENTIALS` apontando para um arquivo de credenciais protegido) ou uma service account aprovada no backend. A verificação de revogação de ID tokens e o rate limit no Firestore precisam dessas credenciais; sem elas, a API retorna erro de serviço temporário e mantém a sessão do navegador. Nunca copie credenciais para `.env.example`. O servidor carrega `.env.local` e `.env`; `.gitignore`, `.dockerignore` e `.npmignore` excluem arquivos `.env` reais. Configure os valores sem mostrá-los em terminal compartilhado ou logs.
 
 ## Verificação funcional
 

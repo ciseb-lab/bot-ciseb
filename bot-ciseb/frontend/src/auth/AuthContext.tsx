@@ -12,7 +12,6 @@ import {
 } from 'firebase/auth';
 import { auth, firebaseConfigured } from '../firebase/client.ts';
 import { isInstitutionalEmail } from '../../../shared/authPolicy.ts';
-import { ensureUserProfile } from '../data/userProfileStore.ts';
 
 interface AuthContextValue {
   configured: boolean;
@@ -104,7 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(nextUser);
         setLoading(false);
         if (nextUser?.email) {
-          void ensureUserProfile(nextUser.uid, nextUser.email)
+          const userEmail = nextUser.email;
+          void import('../data/userProfileStore.ts')
+            .then(({ ensureUserProfile }) => ensureUserProfile(nextUser.uid, userEmail))
             .then(() => { if (active) setProfileSyncError(null); })
             .catch(() => {
               if (active) setProfileSyncError('Não foi possível sincronizar os dados básicos da conta. O histórico pode ficar indisponível até a conexão ser restabelecida.');

@@ -21,6 +21,8 @@ import { isFirebaseAdminConfigured } from './firebaseAdmin.ts';
 
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT) || 3000;
+const DOCUMENTS_DIRECTORY = process.env.DOCUMENTS_DIR
+  || path.resolve(process.cwd(), 'backend', 'documents');
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const allowedOrigins = new Set(
   (process.env.APP_ORIGINS || (isProd ? '' : 'http://localhost:5173,http://localhost:3000'))
@@ -58,6 +60,10 @@ app.use((req, res, next) => {
   return next();
 });
 app.use(express.json({ limit: process.env.API_JSON_LIMIT || '200kb', strict: true }));
+app.get(['/health', '/api/health'], (_req, res) => {
+  res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });
+});
+app.use('/api', requireAppCheck, requireInstitutionalIdentity);
 app.use('/api', async (_req, _res, next) => {
   try {
     await initializeBackend();
@@ -66,15 +72,6 @@ app.use('/api', async (_req, _res, next) => {
     next(error);
   }
 });
-app.get(['/health', '/api/health'], async (_req, res, next) => {
-  try {
-    await initializeBackend();
-    res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });
-  } catch (error) {
-    next(error);
-  }
-});
-app.use('/api', requireAppCheck, requireInstitutionalIdentity);
 
 // Initialize server-side Gemini client
 const apiKey = process.env.GEMINI_API_KEY || '';
@@ -202,6 +199,7 @@ app.get('/api/documents/status', (_req, res) => {
     sources: documentIndex.sources,
     documents: documentIndex.documents,
     sourcesWithoutText: documentIndex.sourcesWithoutText,
+    sourcesUnavailable: documentIndex.sourcesUnavailable,
   });
 });
 
@@ -211,7 +209,7 @@ app.get('/api/documents/:source', (req, res) => {
     return res.status(404).json({ error: 'Documento não encontrado na base disponível.' });
   }
 
-  return res.download(path.join(__dirname, 'documents', source), source, error => {
+  return res.download(path.join(DOCUMENTS_DIRECTORY, source), source, error => {
     if (error && !res.headersSent) {
       res.status(500).json({ error: 'Não foi possível disponibilizar este documento.' });
     }
@@ -442,12 +440,15 @@ async function initializeBackend(): Promise<void> {
       if (isProd && !isFirebaseAdminConfigured()) {
         throw new Error('Configure FIREBASE_PROJECT_ID e credenciais Firebase Admin válidas para o ambiente de produção.');
       }
-      const documentsDirectory = process.env.DOCUMENTS_DIR
-        || path.resolve(process.cwd(), 'backend', 'documents');
-      documentIndex = await loadDocumentIndex(documentsDirectory);
+      documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
       console.log(
-        `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis.`
+        `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis, ${documentIndex.sourcesUnavailable.length} indisponíveis.`
       );
+      if (documentIndex.sourcesUnavailable.length > 0) {
+        console.warn(
+          `PDFs que não puderam ser lidos: ${documentIndex.sourcesUnavailable.join(', ')}`
+        );
+      }
       if (documentIndex.sourcesWithoutText.length > 0) {
         console.warn(
           `PDFs sem texto pesquisável (OCR necessário): ${documentIndex.sourcesWithoutText.join(', ')}`
@@ -455,7 +456,13 @@ async function initializeBackend(): Promise<void> {
       }
     })();
   }
-  await backendInitialization;
+  const initialization = backendInitialization;
+  try {
+    await initialization;
+  } catch (error) {
+    if (backendInitialization === initialization) backendInitialization = undefined;
+    throw error;
+  }
 }
 
 export async function startServer() {

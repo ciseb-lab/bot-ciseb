@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Download, FileText, LoaderCircle, X } from 'lucide-react';
+import { useModalFocus } from '../hooks/useModalFocus.ts';
 
 interface PdfExportModalProps {
   title: string;
@@ -18,11 +19,14 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   onClose,
   onExport,
 }) => {
+  const dialogRef = useModalFocus<HTMLDivElement>(true, () => {
+    if (!isExporting) onClose();
+  });
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="pdf-export-title">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="pdf-export-title">
       <section className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
           <div className="flex items-center gap-3">

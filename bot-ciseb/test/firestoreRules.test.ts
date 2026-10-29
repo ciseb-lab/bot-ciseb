@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import assert from 'node:assert';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import {
   assertFails,
@@ -117,6 +118,39 @@ describe('Regras de segurança do Firestore', () => {
       uid: institutionalUser.uid,
       email: institutionalUser.email,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+  });
+
+  test('permite atualizar perfil sem alterar UID, e-mail ou data de criação', async () => {
+    const database = authenticatedContext(
+      institutionalUser.uid,
+      institutionalUser.email,
+    ).firestore();
+    const profileRef = doc(database, 'users', institutionalUser.uid);
+
+    await assertSucceeds(setDoc(profileRef, {
+      uid: institutionalUser.uid,
+      email: institutionalUser.email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+
+    const existingProfile = await getDoc(profileRef);
+    const createdAt = existingProfile.data()?.createdAt;
+    assert.ok(createdAt);
+
+    await assertSucceeds(setDoc(profileRef, {
+      uid: institutionalUser.uid,
+      email: institutionalUser.email,
+      createdAt,
+      updatedAt: serverTimestamp(),
+    }));
+
+    await assertFails(setDoc(profileRef, {
+      uid: institutionalUser.uid,
+      email: 'outra@escola.seduc.pa.gov.br',
+      createdAt,
       updatedAt: serverTimestamp(),
     }));
   });

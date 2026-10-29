@@ -1,18 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
-import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore/lite';
 import { X } from 'lucide-react';
 import { apiFetch, readApiJson } from './utils/api.ts';
 import { useAuth } from './auth/AuthContext.tsx';
 import { LoginScreen } from './components/LoginScreen.tsx';
-import { deleteConversation, getMessagePage, importLegacyConversations, listConversations, persistMessage } from './data/conversationStore.ts';
 import { Sidebar, ChatSession } from './components/Sidebar.tsx';
-import { ChatView, GroundedDocumentReference, Message } from './components/ChatView.tsx';
-import { DocsModal } from './components/DocsModal.tsx';
-import { QuickPlanWizard } from './components/QuickPlanWizard.tsx';
-import { PdfExportModal } from './components/PdfExportModal.tsx';
-import { CurriculumBrowser } from './components/CurriculumBrowser.tsx';
+import type { GroundedDocumentReference, Message } from './components/ChatView.tsx';
 import { CurriculumSkill } from '../../shared/curriculumData.ts';
+import { useModalFocus } from './hooks/useModalFocus.ts';
+
+const DocsModal = lazy(() => import('./components/DocsModal.tsx').then(module => ({ default: module.DocsModal })));
+const ChatView = lazy(() => import('./components/ChatView.tsx').then(module => ({ default: module.ChatView })));
+const QuickPlanWizard = lazy(() => import('./components/QuickPlanWizard.tsx').then(module => ({ default: module.QuickPlanWizard })));
+const PdfExportModal = lazy(() => import('./components/PdfExportModal.tsx').then(module => ({ default: module.PdfExportModal })));
+const CurriculumBrowser = lazy(() => import('./components/CurriculumBrowser.tsx').then(module => ({ default: module.CurriculumBrowser })));
 
 interface ChatConversation extends ChatSession {
   messages: Message[];
@@ -82,6 +84,14 @@ function formatTimestamp(): string {
   return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+function ModalLoadingFallback() {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 text-sm text-white" role="status" aria-live="polite">
+      Carregando…
+    </div>
+  );
+}
+
 function createMessage(role: Message['role'], content: string, extras: Partial<Message> = {}): Message {
   return {
     id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -143,6 +153,14 @@ function AuthenticatedApp({ user }: { user: User }) {
   const [pdfDraft, setPdfDraft] = useState<PdfDraft | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfExportError, setPdfExportError] = useState<string | null>(null);
+  const curriculumDialogRef = useModalFocus<HTMLDivElement>(
+    isCurriculumOpen,
+    () => setIsCurriculumOpen(false),
+  );
+  const planBuilderDialogRef = useModalFocus<HTMLDivElement>(
+    isPlanBuilderOpen,
+    () => setIsPlanBuilderOpen(false),
+  );
 
   const activeConversation = useMemo(
     () => conversations.find(conversation => conversation.id === activeSessionId),
@@ -161,7 +179,8 @@ function AuthenticatedApp({ user }: { user: User }) {
   useEffect(() => {
     let active = true;
     setIsHistoryLoading(true);
-    listConversations(user.uid)
+    import('./data/conversationStore.ts')
+      .then(({ listConversations }) => listConversations(user.uid))
       .then(page => {
         if (!active) return;
         cursorRef.current = page.cursor;
@@ -181,7 +200,8 @@ function AuthenticatedApp({ user }: { user: User }) {
     let active = true;
     setIsLoadingConversationMessages(true);
     setHasOlderMessages(false);
-    getMessagePage(user.uid, activeSessionId)
+    import('./data/conversationStore.ts')
+      .then(({ getMessagePage }) => getMessagePage(user.uid, activeSessionId))
       .then(page => {
         if (!active) return;
         loadedConversationIds.current.add(activeSessionId);
@@ -230,6 +250,7 @@ function AuthenticatedApp({ user }: { user: User }) {
     if (!cursorRef.current || isLoadingMoreConversations) return;
     setIsLoadingMoreConversations(true);
     try {
+      const { listConversations } = await import('./data/conversationStore.ts');
       const page = await listConversations(user.uid, 20, cursorRef.current);
       cursorRef.current = page.cursor;
       setConversations(previous => {
@@ -249,6 +270,7 @@ function AuthenticatedApp({ user }: { user: User }) {
     if (firstSequence === undefined || isLoadingOlderMessages) return;
     setIsLoadingOlderMessages(true);
     try {
+      const { getMessagePage } = await import('./data/conversationStore.ts');
       const page = await getMessagePage(user.uid, activeSessionId, 50, firstSequence);
       setConversations(previous => previous.map(conversation => conversation.id === activeSessionId
         ? { ...conversation, messages: [...page.messages, ...conversation.messages] }
@@ -267,6 +289,7 @@ function AuthenticatedApp({ user }: { user: User }) {
     setIsImportingLegacy(true);
     setHistoryError(null);
     try {
+      const { importLegacyConversations, listConversations } = await import('./data/conversationStore.ts');
       await importLegacyConversations(user.uid, legacyConversations);
       const page = await listConversations(user.uid);
       cursorRef.current = page.cursor;
@@ -286,6 +309,7 @@ function AuthenticatedApp({ user }: { user: User }) {
   const handleDeleteConversation = async (id: string) => {
     if (!window.confirm('Excluir esta conversa e todas as mensagens salvas na sua conta?')) return;
     try {
+      const { deleteConversation } = await import('./data/conversationStore.ts');
       await deleteConversation(user.uid, id);
       loadedConversationIds.current.delete(id);
       setConversations(previous => {
@@ -333,6 +357,7 @@ function AuthenticatedApp({ user }: { user: User }) {
 
     let userMessagePersisted = false;
     try {
+      const { persistMessage } = await import('./data/conversationStore.ts');
       await persistMessage(user.uid, sessionId, conversationTitle, userMessage);
       userMessagePersisted = true;
       const response = await apiFetch('/api/chat', {
@@ -447,70 +472,82 @@ function AuthenticatedApp({ user }: { user: User }) {
           if (item === 'curriculum') setIsCurriculumOpen(true);
         }}
       />
-      <ChatView
-        messages={messages}
-        isLoading={isLoading || isHistoryLoading || isLoadingConversationMessages}
-        onSendMessage={handleSendMessage}
-        onExportMessage={handleOpenPdfDraft}
-        onOpenPlanBuilder={() => setIsPlanBuilderOpen(true)}
-        onOpenSidebar={() => setSidebarOpen(true)}
-        userEmail={user.email || ''}
-        onLogout={() => void logout()}
-        historyError={historyError}
-        legacyConversationCount={legacyConversationCount}
-        isImportingLegacy={isImportingLegacy}
-        onImportLegacy={() => void handleImportLegacy()}
-        hasOlderMessages={hasOlderMessages}
-        isLoadingOlderMessages={isLoadingOlderMessages}
-        onLoadOlderMessages={() => void handleLoadOlderMessages()}
-      />
-      <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
+      <Suspense fallback={<main className="flex h-dvh items-center justify-center bg-[#f2f6fa] text-sm text-slate-500" role="status">Carregando conversa…</main>}>
+        <ChatView
+          messages={messages}
+          isLoading={isLoading || isHistoryLoading || isLoadingConversationMessages}
+          onSendMessage={handleSendMessage}
+          onExportMessage={handleOpenPdfDraft}
+          onOpenPlanBuilder={() => setIsPlanBuilderOpen(true)}
+          onOpenSidebar={() => setSidebarOpen(true)}
+          userEmail={user.email || ''}
+          onLogout={() => void logout()}
+          historyError={historyError}
+          legacyConversationCount={legacyConversationCount}
+          isImportingLegacy={isImportingLegacy}
+          onImportLegacy={() => void handleImportLegacy()}
+          hasOlderMessages={hasOlderMessages}
+          isLoadingOlderMessages={isLoadingOlderMessages}
+          onLoadOlderMessages={() => void handleLoadOlderMessages()}
+        />
+      </Suspense>
+      {isDocsOpen && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <DocsModal isOpen onClose={() => setIsDocsOpen(false)} />
+        </Suspense>
+      )}
       {isCurriculumOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="curriculum-browser-title">
-          <section className="flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl">
-            <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
-              <div>
-                <h2 id="curriculum-browser-title" className="text-sm font-bold text-slate-900">Explorar registros curriculares</h2>
-                <p className="mt-1 text-xs text-slate-500">Selecione um registro para levá-lo ao chat como ponto de partida.</p>
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <div ref={curriculumDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="curriculum-browser-title">
+            <section className="flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl">
+              <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+                <div>
+                  <h2 id="curriculum-browser-title" className="text-sm font-bold text-slate-900">Explorar registros curriculares</h2>
+                  <p className="mt-1 text-xs text-slate-500">Selecione um registro para levá-lo ao chat como ponto de partida.</p>
+                </div>
+                <button type="button" onClick={() => setIsCurriculumOpen(false)} aria-label="Fechar consulta curricular" className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"><X className="h-5 w-5" /></button>
+              </header>
+              <div className="overflow-y-auto p-4 sm:p-6">
+                <CurriculumBrowser onSelectSkillForPlan={(skill: CurriculumSkill) => {
+                  setIsCurriculumOpen(false);
+                  void handleSendMessage(`Quero explorar esta habilidade curricular como ponto de partida para uma proposta.\n\nCódigo: ${skill.code}\nTexto registrado: ${skill.verbatimText}\nFonte indicada no catálogo: ${skill.sourceDocument}\nEtapa: ${skill.stage}\n\nAjude-me a desenvolver possibilidades relacionadas, sem presumir formato ou recursos. Diferencie o registro curricular das sugestões.`);
+                }} />
               </div>
-              <button type="button" onClick={() => setIsCurriculumOpen(false)} aria-label="Fechar consulta curricular" className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"><X className="h-5 w-5" /></button>
-            </header>
-            <div className="overflow-y-auto p-4 sm:p-6">
-              <CurriculumBrowser onSelectSkillForPlan={(skill: CurriculumSkill) => {
-                setIsCurriculumOpen(false);
-                void handleSendMessage(`Quero explorar esta habilidade curricular como ponto de partida para uma proposta.\n\nCódigo: ${skill.code}\nTexto registrado: ${skill.verbatimText}\nFonte indicada no catálogo: ${skill.sourceDocument}\nEtapa: ${skill.stage}\n\nAjude-me a desenvolver possibilidades relacionadas, sem presumir formato ou recursos. Diferencie o registro curricular das sugestões.`);
-              }} />
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        </Suspense>
       )}
       {isPlanBuilderOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Estruturar uma proposta">
-          <div className="relative my-auto w-full max-w-3xl">
-            <button
-              type="button"
-              onClick={() => setIsPlanBuilderOpen(false)}
-              className="absolute right-3 top-3 z-10 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
-              aria-label="Fechar estruturador"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <QuickPlanWizard onSubmitToChat={query => {
-              setIsPlanBuilderOpen(false);
-              void handleSendMessage(query);
-            }} />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <div ref={planBuilderDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Estruturar uma proposta">
+            <div className="relative my-auto w-full max-w-3xl">
+              <button
+                type="button"
+                onClick={() => setIsPlanBuilderOpen(false)}
+                className="absolute right-3 top-3 z-10 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
+                aria-label="Fechar estruturador"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <QuickPlanWizard onSubmitToChat={query => {
+                setIsPlanBuilderOpen(false);
+                void handleSendMessage(query);
+              }} />
+            </div>
           </div>
-        </div>
+        </Suspense>
       )}
       {pdfDraft && (
-        <PdfExportModal
-          title={pdfDraft.title}
-          content={pdfDraft.content}
-          isExporting={isExportingPdf}
-          error={pdfExportError}
-          onClose={() => setPdfDraft(null)}
-          onExport={handleExportPdf}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <PdfExportModal
+            title={pdfDraft.title}
+            content={pdfDraft.content}
+            isExporting={isExportingPdf}
+            error={pdfExportError}
+            onClose={() => setPdfDraft(null)}
+            onExport={handleExportPdf}
+          />
+        </Suspense>
       )}
     </div>
   );

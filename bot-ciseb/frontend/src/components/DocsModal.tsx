@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BookCheck, Download, ExternalLink, FileText, LoaderCircle, X } from 'lucide-react';
 import { apiFetch, downloadApiFile, readApiJson } from '../utils/api.ts';
+import { useModalFocus } from '../hooks/useModalFocus.ts';
 
 interface DocumentSummary {
   source: string;
@@ -12,6 +13,7 @@ interface DocumentSummary {
 interface DocumentStatus {
   documents: DocumentSummary[];
   sourcesWithoutText: string[];
+  sourcesUnavailable?: string[];
 }
 
 interface DocsModalProps {
@@ -20,6 +22,7 @@ interface DocsModalProps {
 }
 
 export const DocsModal: React.FC<DocsModalProps> = ({ isOpen, onClose }) => {
+  const dialogRef = useModalFocus<HTMLDivElement>(isOpen, onClose);
   const [status, setStatus] = useState<DocumentStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export const DocsModal: React.FC<DocsModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="docs-modal-title">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="docs-modal-title">
       <section className="flex max-h-[88dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
           <div className="flex items-center gap-3">
@@ -100,6 +103,9 @@ export const DocsModal: React.FC<DocsModalProps> = ({ isOpen, onClose }) => {
               </ul>
               {status.sourcesWithoutText.length > 0 && (
                 <p className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">Alguns arquivos não possuem texto pesquisável e podem exigir OCR: {status.sourcesWithoutText.join(', ')}.</p>
+              )}
+              {status.sourcesUnavailable && status.sourcesUnavailable.length > 0 && (
+                <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-xs text-red-700">Não foi possível ler estes arquivos: {status.sourcesUnavailable.join(', ')}. Eles ainda podem ser baixados para conferência.</p>
               )}
             </>
           )}

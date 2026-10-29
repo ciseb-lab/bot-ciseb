@@ -14,12 +14,12 @@ O código está separado em `frontend/` (React/Vite e assets), `backend/` (Expre
 2. Os domínios `escola.seduc.pa.gov.br` e `seduc.pa.gov.br` são comparados como domínios completos na política compartilhada. O cliente exige provedor Google e e-mail verificado para liberar a aplicação.
 3. Chamadas `/api/**` recebem Firebase ID token; o Firebase Admin verifica assinatura, validade, revogação, provedor Google, domínio e declaração `email_verified`.
 4. App Check é validado quando o token é enviado; a exigência está desligada por padrão e só deve ser ligada após configurar e testar o provedor no frontend e no servidor.
-5. CORS aceita apenas as origens enumeradas em `APP_ORIGINS`. JSON tem limite de tamanho. O rate limiter e a concorrência são verificados antes das operações Gemini/PDF.
+5. CORS aceita apenas as origens enumeradas em `APP_ORIGINS`. JSON tem limite de tamanho. A verificação de saúde pública não inicializa nem lê PDFs; a API valida identidade antes da inicialização documental. O rate limiter e a concorrência são verificados antes das operações Gemini/PDF.
 6. `/api/chat` envia a instrução de sistema, a pergunta, até quatro mensagens recentes limitadas e até quatro trechos documentais recuperados. A chave Gemini existe somente no ambiente do servidor.
 
 ## Persistência e histórico
 
-O cliente Firebase grava diretamente em `users/{uid}/conversations/{conversationId}/messages/{messageId}`. As regras derivam a autorização de `request.auth.uid`, exigem sessão Google institucional verificada e limitam campos, tipos e comprimentos. Um documento `users/{uid}` contém somente UID, e-mail e timestamps. O Firebase Admin não é usado para gravar conversas.
+O cliente usa Firestore Lite, carregado sob demanda, para gravar diretamente em `users/{uid}/conversations/{conversationId}/messages/{messageId}`. As operações atuais são leituras e gravações explícitas, sem listeners em tempo real. O SDK Lite não fornece cache/offline queue; as operações do histórico precisam de conexão e não são enfileiradas para sincronização posterior. As regras derivam a autorização de `request.auth.uid`, exigem sessão Google institucional verificada e limitam campos, tipos e comprimentos. Um documento `users/{uid}` contém somente UID, e-mail e timestamps. O Firebase Admin não é usado para gravar conversas.
 
 A lista de conversas é paginada (20 por consulta), mensagens são carregadas em blocos de 50 e as anteriores podem ser solicitadas incrementalmente. A gravação da mensagem e atualização do contador da conversa usam transação. A exclusão remove mensagens em lotes antes do documento pai.
 

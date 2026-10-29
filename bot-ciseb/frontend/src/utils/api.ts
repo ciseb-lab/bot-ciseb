@@ -32,7 +32,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (response.status === 401 && auth?.currentUser) {
     const data: unknown = await response.clone().json().catch(() => null);
     if (data && typeof data === 'object' && 'code' in data
-      && (data.code === 'SESSION_EXPIRED' || data.code === 'AUTH_REQUIRED')) {
+      && data.code === 'SESSION_EXPIRED') {
       await signOut(auth);
     }
   }

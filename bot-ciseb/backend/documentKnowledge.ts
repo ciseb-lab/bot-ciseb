@@ -40,6 +40,7 @@ export interface DocumentIndex {
   pages: DocumentPage[];
   chunks: DocumentChunk[];
   sourcesWithoutText: string[];
+  sourcesUnavailable: string[];
 }
 
 export interface DocumentPage {
@@ -125,24 +126,38 @@ export async function loadDocumentIndex(directory: string): Promise<DocumentInde
   const chunks: DocumentChunk[] = [];
   const indexedPages: DocumentPage[] = [];
   const sourcesWithoutText: string[] = [];
+  const sourcesUnavailable: string[] = [];
   const documents: DocumentSource[] = [];
 
   for (const source of files) {
     const filePath = path.join(directory, source);
-    const parser = new PDFParse({ data: new Uint8Array(await readFile(filePath)) });
-    let pages: Array<{ num: number; text: string }>;
+    let parser: InstanceType<typeof PDFParse> | undefined;
+    let sourcePages: Array<{ num: number; text: string }> = [];
     let pageCount = 0;
     try {
+      parser = new PDFParse({ data: new Uint8Array(await readFile(filePath)) });
       const parsed = await parser.getText();
-      pages = parsed.pages.length > 0 ? parsed.pages : [{ num: 0, text: parsed.text }];
+      sourcePages = parsed.pages.length > 0 ? parsed.pages : [{ num: 0, text: parsed.text }];
       pageCount = parsed.total;
     } catch (error) {
-      throw new Error(`Falha ao ler o documento "${source}".`, { cause: error });
+      sourcesUnavailable.push(source);
+      documents.push({
+        source,
+        title: path.basename(source, path.extname(source)).replace(/[_-]+/g, ' ').trim(),
+        pageCount: 0,
+        searchable: false,
+      });
+      console.warn(JSON.stringify({
+        severity: 'WARNING',
+        event: 'document_index_failed',
+        source,
+        error: error instanceof Error ? error.name : 'UnknownError',
+      }));
+      continue;
     } finally {
-      await parser.destroy();
+      await parser?.destroy();
     }
 
-    const sourcePages = pages;
     const sourceChunks: DocumentChunk[] = [];
     for (const page of sourcePages) {
       const pageNumber = page.num > 0 ? page.num : undefined;
@@ -174,11 +189,7 @@ export async function loadDocumentIndex(directory: string): Promise<DocumentInde
     }
   }
 
-  if (chunks.length === 0) {
-    throw new Error('Os PDFs não contêm texto pesquisável; é necessário aplicar OCR antes de indexá-los.');
-  }
-
-  return { sources: files, documents, pages: indexedPages, chunks, sourcesWithoutText };
+  return { sources: files, documents, pages: indexedPages, chunks, sourcesWithoutText, sourcesUnavailable };
 }
 
 export function searchDocumentIndex(

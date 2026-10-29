@@ -10,7 +10,7 @@ Assistente de apoio à formação e às práticas pedagógicas da educação pú
 - Raiz: comandos npm, dependências, configuração Vite/TypeScript, testes e documentação.
 - Tecnologias do frontend: React 19, TypeScript, Vite e Firebase Web SDK.
 - Tecnologias do backend: Node.js, Express e `@google/genai`; a chave Gemini permanece exclusivamente no servidor.
-- Identidade e persistência: Firebase Authentication e Cloud Firestore com regras restritivas.
+- Identidade e persistência: Firebase Authentication e Cloud Firestore Lite no cliente, com regras restritivas; operações do histórico exigem conexão e não têm fila offline.
 - Documentos: PDFs locais indexados em trechos no início do servidor (RAG; não há retreinamento do modelo).
 - PDF: conteúdo revisado no cliente é enviado à API para geração do arquivo.
 - Deploy documentado: frontend Vite e API Express no Vercel; Firebase Authentication e Cloud Firestore fornecem identidade, histórico e limites.
@@ -19,7 +19,7 @@ Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md
 
 ## Pré-requisitos e execução local
 
-- Node.js 20.19+ ou 22.12+; a versão local validada nesta atualização é 24.19.0.
+- Node.js 24.12+; a versão local validada nesta atualização é 24.14.0.
 - npm, Firebase project configurado para uso real ou Firebase CLI para os emuladores.
 
 Na raiz do projeto:

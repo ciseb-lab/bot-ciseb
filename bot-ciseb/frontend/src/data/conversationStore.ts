@@ -1,23 +1,10 @@
 import {
-  Timestamp,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  runTransaction,
-  serverTimestamp,
-  startAfter,
-  where,
-  writeBatch,
   type DocumentData,
+  type Firestore,
   type QueryDocumentSnapshot,
-} from 'firebase/firestore';
+} from 'firebase/firestore/lite';
 import type { Message } from '../components/ChatView.tsx';
-import { firestore } from '../firebase/client.ts';
+import { getFirestoreDatabase } from '../firebase/client.ts';
 import { legacyConversationDocumentId } from './legacyConversationId.ts';
 
 export interface StoredConversationSummary {
@@ -33,17 +20,26 @@ export interface ConversationPage {
   cursor?: QueryDocumentSnapshot<DocumentData>;
 }
 
-function requireFirestore() {
-  if (!firestore) throw new Error('O Firestore não está configurado neste ambiente.');
-  return firestore;
+async function getFirestoreContext() {
+  const [database, firestoreSdk] = await Promise.all([
+    getFirestoreDatabase(),
+    import('firebase/firestore/lite'),
+  ]);
+  if (!database) throw new Error('O Firestore não está configurado neste ambiente.');
+  return { database, firestoreSdk };
 }
 
-function getConversationRef(uid: string, conversationId: string) {
-  return doc(requireFirestore(), 'users', uid, 'conversations', conversationId);
+function getConversationRef(
+  database: Firestore,
+  firestoreSdk: typeof import('firebase/firestore/lite'),
+  uid: string,
+  conversationId: string,
+) {
+  return firestoreSdk.doc(database, 'users', uid, 'conversations', conversationId);
 }
 
 function toSummary(id: string, data: DocumentData): StoredConversationSummary {
-  const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : Date.now();
+  const updatedAt = typeof data.updatedAt?.toMillis === 'function' ? data.updatedAt.toMillis() : Date.now();
   return {
     id,
     title: typeof data.title === 'string' ? data.title : 'Conversa',
@@ -58,9 +54,15 @@ export async function listConversations(
   pageSize = 20,
   cursor?: QueryDocumentSnapshot<DocumentData>,
 ): Promise<ConversationPage> {
-  const conversationsRef = collection(requireFirestore(), 'users', uid, 'conversations');
-  const pageQuery = query(conversationsRef, orderBy('updatedAt', 'desc'), ...(cursor ? [startAfter(cursor)] : []), limit(pageSize));
-  const snapshot = await getDocs(pageQuery);
+  const { database, firestoreSdk } = await getFirestoreContext();
+  const conversationsRef = firestoreSdk.collection(database, 'users', uid, 'conversations');
+  const pageQuery = firestoreSdk.query(
+    conversationsRef,
+    firestoreSdk.orderBy('updatedAt', 'desc'),
+    ...(cursor ? [firestoreSdk.startAfter(cursor)] : []),
+    firestoreSdk.limit(pageSize),
+  );
+  const snapshot = await firestoreSdk.getDocs(pageQuery);
   return {
     conversations: snapshot.docs.map(item => toSummary(item.id, item.data())),
     cursor: snapshot.docs.at(-1),
@@ -73,16 +75,20 @@ export async function getMessagePage(
   pageSize = 50,
   beforeSequence?: number,
 ): Promise<{ messages: Message[]; hasMore: boolean }> {
-  const messagesRef = collection(getConversationRef(uid, conversationId), 'messages');
+  const { database, firestoreSdk } = await getFirestoreContext();
+  const messagesRef = firestoreSdk.collection(
+    getConversationRef(database, firestoreSdk, uid, conversationId),
+    'messages',
+  );
   const constraints = [
-    ...(beforeSequence === undefined ? [] : [where('sequence', '<', beforeSequence)]),
-    orderBy('sequence', 'desc'),
-    limit(pageSize),
+    ...(beforeSequence === undefined ? [] : [firestoreSdk.where('sequence', '<', beforeSequence)]),
+    firestoreSdk.orderBy('sequence', 'desc'),
+    firestoreSdk.limit(pageSize),
   ];
-  const snapshot = await getDocs(query(messagesRef, ...constraints));
+  const snapshot = await firestoreSdk.getDocs(firestoreSdk.query(messagesRef, ...constraints));
   const messages = snapshot.docs.map(item => {
     const data = item.data();
-    const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date();
+    const createdAt = typeof data.createdAt?.toDate === 'function' ? data.createdAt.toDate() : new Date();
     return {
       id: item.id,
       sequence: data.sequence,
@@ -96,11 +102,14 @@ export async function getMessagePage(
 }
 
 export async function persistMessage(uid: string, conversationId: string, title: string, message: Message): Promise<void> {
-  const database = requireFirestore();
-  const conversationRef = doc(database, 'users', uid, 'conversations', conversationId);
-  const messageRef = doc(collection(conversationRef, 'messages'), message.id);
+  const { database, firestoreSdk } = await getFirestoreContext();
+  const conversationRef = getConversationRef(database, firestoreSdk, uid, conversationId);
+  const messageRef = firestoreSdk.doc(
+    firestoreSdk.collection(conversationRef, 'messages'),
+    message.id,
+  );
 
-  await runTransaction(database, async transaction => {
+  await firestoreSdk.runTransaction(database, async transaction => {
     const conversationSnapshot = await transaction.get(conversationRef);
     if (!conversationSnapshot.exists() && message.role !== 'user') {
       throw new Error('A conversa precisa começar com uma mensagem do usuário.');
@@ -111,14 +120,14 @@ export async function persistMessage(uid: string, conversationId: string, title:
       title: existing?.title || title.slice(0, 100),
       schemaVersion: 1,
       messageCount: sequence + 1,
-      createdAt: existing?.createdAt || serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: existing?.createdAt || firestoreSdk.serverTimestamp(),
+      updatedAt: firestoreSdk.serverTimestamp(),
     }, { merge: true });
     transaction.set(messageRef, {
       role: message.role,
       content: message.content.slice(0, 12_000),
       sequence,
-      createdAt: serverTimestamp(),
+      createdAt: firestoreSdk.serverTimestamp(),
       groundedDocuments: (message.groundedDocuments || []).slice(0, 5).map(reference => ({
         source: reference.source,
         title: reference.title,
@@ -129,41 +138,49 @@ export async function persistMessage(uid: string, conversationId: string, title:
 }
 
 export async function deleteConversation(uid: string, conversationId: string): Promise<void> {
-  const conversationRef = getConversationRef(uid, conversationId);
-  const messagesRef = collection(conversationRef, 'messages');
+  const { database, firestoreSdk } = await getFirestoreContext();
+  const conversationRef = getConversationRef(database, firestoreSdk, uid, conversationId);
+  const messagesRef = firestoreSdk.collection(conversationRef, 'messages');
   while (true) {
-    const page = await getDocs(query(messagesRef, orderBy('sequence', 'asc'), limit(400)));
+    const page = await firestoreSdk.getDocs(firestoreSdk.query(
+      messagesRef,
+      firestoreSdk.orderBy('sequence', 'asc'),
+      firestoreSdk.limit(400),
+    ));
     if (page.empty) break;
-    const batch = writeBatch(requireFirestore());
+    const batch = firestoreSdk.writeBatch(database);
     page.docs.forEach(message => batch.delete(message.ref));
     await batch.commit();
     if (page.size < 400) break;
   }
-  await deleteDoc(conversationRef);
+  await firestoreSdk.deleteDoc(conversationRef);
 }
 
 export async function importLegacyConversations(uid: string, conversations: Array<{ id: string; title: string; messages: Message[]; updatedAt: number }>): Promise<void> {
-  const database = requireFirestore();
+  const { database, firestoreSdk } = await getFirestoreContext();
   for (const legacy of conversations) {
     const id = legacyConversationDocumentId(legacy.id);
-    const conversationRef = doc(database, 'users', uid, 'conversations', id);
-    if ((await getDoc(conversationRef)).exists()) continue;
-    const batch = writeBatch(database);
+    const conversationRef = firestoreSdk.doc(database, 'users', uid, 'conversations', id);
+    if ((await firestoreSdk.getDoc(conversationRef)).exists()) continue;
+    const batch = firestoreSdk.writeBatch(database);
     const messages = legacy.messages.slice(-100);
     batch.set(conversationRef, {
       title: legacy.title.slice(0, 100),
       schemaVersion: 1,
       messageCount: messages.length,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: firestoreSdk.serverTimestamp(),
+      updatedAt: firestoreSdk.serverTimestamp(),
     });
     messages.forEach((message, sequence) => {
-      const messageRef = doc(collection(conversationRef, 'messages'), `legacy-${sequence}`);
+      const messageRef = firestoreSdk.doc(
+        firestoreSdk.collection(conversationRef, 'messages'),
+        `legacy-${sequence}`,
+      );
       batch.set(messageRef, {
         role: message.role,
         content: message.content.slice(0, 12_000),
         sequence,
-        createdAt: serverTimestamp(),
+        createdAt: firestoreSdk.serverTimestamp(),
         groundedDocuments: (message.groundedDocuments || []).slice(0, 5),
       });
     });
