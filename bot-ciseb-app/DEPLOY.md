@@ -10,7 +10,7 @@ Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis m�
 
 1. Importe `https://github.com/ciseb-lab/bot-ciseb` na Vercel.
 2. Em **Root Directory**, escolha `bot-ciseb-app` — não a raiz do repositório, que também contém uma versão antiga do app.
-3. Use Node.js 24.x na configuração da Vercel. O `package.json` fixa essa versão porque `firebase-admin` carrega `jwks-rsa`, que usa o pacote ESM-only `jose` e requer suporte a `require(ESM)` do Node.js.
+3. Use Node.js 24.x na configuração da Vercel. O `package.json` fixa essa versão para atender aos requisitos do Firebase Admin. O `overrides` fixa `jose` em uma versão com entrada CommonJS porque o `jwks-rsa` usado pelo Firebase Admin ainda o carrega com `require()`.
 4. Configure o install command como `npm ci --include=dev`. A pasta do app deve conter `package-lock.json`.
 5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. As funções em `api/` encaminham as rotas conhecidas para a aplicação Express, incluindo endpoints aninhados de documentos e currículo; os assets do frontend são servidos pelo diretório `dist`. Depois do deploy, confirme `/api/health` e, com sessão institucional válida, `/api/documents/status`.
 6. Configure as variáveis abaixo antes de criar o primeiro deployment. Sem `APP_ORIGINS`, o backend continua inicializando, mas bloqueia todas as origens de navegador; não publique um deployment funcional sem autenticação do backend e CORS configurados.
