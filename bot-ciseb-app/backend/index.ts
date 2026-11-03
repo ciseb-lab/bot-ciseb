@@ -445,26 +445,45 @@ let backendInitialization: Promise<void> | undefined;
 
 async function initializeBackend(): Promise<void> {
   if (!backendInitialization) {
+    let failureReason = 'backend_configuration';
     backendInitialization = (async () => {
-      if (isProd && !process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY precisa ser configurada como variável secreta do backend em produção.');
-      }
-      if (isProd && !isFirebaseAdminConfigured()) {
-        throw new Error('Configure FIREBASE_PROJECT_ID e credenciais Firebase Admin válidas para o ambiente de produção.');
-      }
-      documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
-      console.log(
-        `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis, ${documentIndex.sourcesUnavailable.length} indisponíveis.`
-      );
-      if (documentIndex.sourcesUnavailable.length > 0) {
-        console.warn(
-          `PDFs que não puderam ser lidos: ${documentIndex.sourcesUnavailable.join(', ')}`
+      try {
+        if (isProd && !process.env.GEMINI_API_KEY) {
+          failureReason = 'gemini_api_key_missing';
+          throw new Error('GEMINI_API_KEY precisa ser configurada como variável secreta do backend em produção.');
+        }
+        if (isProd && !isFirebaseAdminConfigured()) {
+          failureReason = 'firebase_admin_unconfigured';
+          throw new Error('Configure FIREBASE_PROJECT_ID e credenciais Firebase Admin válidas para o ambiente de produção.');
+        }
+        failureReason = 'document_index_load';
+        documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
+        console.log(
+          `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis, ${documentIndex.sourcesUnavailable.length} indisponíveis.`
         );
-      }
-      if (documentIndex.sourcesWithoutText.length > 0) {
-        console.warn(
-          `PDFs sem texto pesquisável (OCR necessário): ${documentIndex.sourcesWithoutText.join(', ')}`
-        );
+        if (documentIndex.sourcesUnavailable.length > 0) {
+          console.warn(
+            `PDFs que não puderam ser lidos: ${documentIndex.sourcesUnavailable.join(', ')}`
+          );
+        }
+        if (documentIndex.sourcesWithoutText.length > 0) {
+          console.warn(
+            `PDFs sem texto pesquisável (OCR necessário): ${documentIndex.sourcesWithoutText.join(', ')}`
+          );
+        }
+      } catch (error) {
+        const code = error && typeof error === 'object' && 'code' in error
+          && ['ENOENT', 'EACCES', 'EISDIR'].includes(String(error.code))
+          ? String(error.code)
+          : undefined;
+        console.error(JSON.stringify({
+          severity: 'ERROR',
+          event: 'backend_initialization_failed',
+          reason: failureReason,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          ...(code ? { code } : {}),
+        }));
+        throw error;
       }
     })();
   }
