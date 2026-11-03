@@ -1,17 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import {
-  browserLocalPersistence,
-  getRedirectResult,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  setPersistence,
-  signInWithPopup,
-  signInWithRedirect,
-  signOut,
-  type User,
-} from 'firebase/auth';
-import { auth, firebaseConfigured } from '../firebase/client.ts';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isInstitutionalEmail } from '../../../shared/authPolicy.ts';
+import { supabase, supabaseConfigured } from '../supabase/client.ts';
+
+export interface InstitutionalUser {
+  uid: string;
+  email: string;
+  emailVerified: true;
+}
 
 interface AuthContextValue {
   configured: boolean;
@@ -19,140 +15,119 @@ interface AuthContextValue {
   initializationError: string | null;
   profileSyncError: string | null;
   accessError: string | null;
-  user: User | null;
+  user: InstitutionalUser | null;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function authPolicyError(code: string): Error & { code: string } {
-  return Object.assign(new Error('A conta não atende à política de acesso institucional.'), { code });
-}
-
-async function getGoogleInstitutionalUser(user: User): Promise<boolean> {
-  if (!user.emailVerified || !isInstitutionalEmail(user.email || '')) return false;
-  const token = await user.getIdTokenResult();
-  const firebaseClaims = token.claims.firebase;
-  return typeof firebaseClaims === 'object'
-    && firebaseClaims !== null
-    && 'sign_in_provider' in firebaseClaims
-    && firebaseClaims.sign_in_provider === 'google.com';
+function toInstitutionalUser(user: SupabaseUser): InstitutionalUser {
+  const providers = user.app_metadata.providers;
+  if (typeof user.email !== 'string'
+    || !isInstitutionalEmail(user.email)
+    || typeof user.email_confirmed_at !== 'string'
+    || (user.app_metadata.provider !== 'google'
+      && !(Array.isArray(providers) && providers.includes('google')))) {
+    throw new Error('A conta não atende à política de acesso institucional.');
+  }
+  return { uid: user.id, email: user.email.toLowerCase(), emailVerified: true };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<InstitutionalUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [profileSyncError, setProfileSyncError] = useState<string | null>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
-    const firebaseAuth = auth;
-    if (!firebaseAuth) {
+    const client = supabase;
+    if (!client) {
       setLoading(false);
       return;
     }
 
     let active = true;
-    let unsubscribe: (() => void) | undefined;
-    void (async () => {
-      try {
-        await setPersistence(firebaseAuth, browserLocalPersistence);
-      } catch {
-        if (active) setInitializationError('Não foi possível habilitar a persistência segura da sessão neste navegador.');
-      }
+    const applyUser = (nextUser: SupabaseUser | null) => {
       if (!active) return;
-      try {
-        await getRedirectResult(firebaseAuth);
-      } catch {
-        if (active) setAccessError('Não foi possível concluir o retorno do login Google. Tente entrar novamente.');
-      }
-      if (!active) return;
-      unsubscribe = onAuthStateChanged(firebaseAuth, async nextUser => {
-        if (!active) return;
-        let isAuthorized = false;
-        try {
-          isAuthorized = nextUser ? await getGoogleInstitutionalUser(nextUser) : false;
-        } catch {
-          if (active) {
-            setAccessError('Não foi possível validar sua sessão. Verifique a conexão e tente entrar novamente.');
-            setUser(null);
-            setLoading(false);
-          }
-          return;
-        }
-        if (nextUser && !isAuthorized) {
-          const errorMessage = !isInstitutionalEmail(nextUser.email || '')
-            ? 'Use uma conta Google dos domínios @escola.seduc.pa.gov.br ou @seduc.pa.gov.br.'
-            : 'Entre usando o provedor Google com seu e-mail institucional verificado.';
-          try {
-            await signOut(firebaseAuth);
-          } catch {
-            if (active) setInitializationError('Não foi possível encerrar uma sessão não autorizada. Recarregue o aplicativo ou procure o suporte.');
-          }
-          if (active) {
-            setAccessError(errorMessage);
-            setUser(null);
-            setLoading(false);
-          }
-          return;
-        }
-
-        setAccessError(null);
-        setUser(nextUser);
+      if (!nextUser) {
+        setUser(null);
         setLoading(false);
-        if (nextUser?.email) {
-          const userEmail = nextUser.email;
-          void import('../data/userProfileStore.ts')
-            .then(({ ensureUserProfile }) => ensureUserProfile(nextUser.uid, userEmail))
-            .then(() => { if (active) setProfileSyncError(null); })
-            .catch(() => {
-              if (active) setProfileSyncError('Não foi possível sincronizar os dados básicos da conta. O histórico pode ficar indisponível até a conexão ser restabelecida.');
-            });
-        } else {
-          setProfileSyncError(null);
+        return;
+      }
+
+      try {
+        setUser(toInstitutionalUser(nextUser));
+        setAccessError(null);
+      } catch {
+        setUser(null);
+        setAccessError('Use uma conta Google verificada de um domínio institucional autorizado.');
+        window.setTimeout(() => { void client.auth.signOut(); }, 0);
+      }
+      setLoading(false);
+    };
+
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      applyUser(session?.user || null);
+    });
+    void client.auth.getSession()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        applyUser(data.session?.user || null);
+      })
+      .catch(() => {
+        if (active) {
+          setInitializationError('Não foi possível restaurar sua sessão. Verifique a conexão e tente novamente.');
+          setLoading(false);
         }
       });
-    })();
 
     return () => {
       active = false;
-      unsubscribe?.();
+      subscription.unsubscribe();
     };
   }, []);
 
+  useEffect(() => {
+    if (!user || !supabase) return;
+    const client = supabase;
+    let active = true;
+    void Promise.resolve()
+      .then(async () => {
+        const { error } = await client.from('profiles').upsert({
+          id: user.uid,
+          email: user.email,
+        }, { onConflict: 'id' });
+        if (error) throw error;
+        if (active) setProfileSyncError(null);
+      })
+      .catch(() => {
+        if (active) setProfileSyncError('Não foi possível sincronizar os dados básicos da conta. O histórico pode ficar indisponível até a conexão ser restabelecida.');
+      });
+    return () => { active = false; };
+  }, [user]);
+
   const signInWithGoogle = useCallback(async () => {
-    if (!auth) throw authPolicyError('auth/not-configured');
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    auth.languageCode = 'pt-BR';
-
-    if (window.matchMedia('(max-width: 640px)').matches) {
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-
-    const credential = await signInWithPopup(auth, provider);
-    if (!(await getGoogleInstitutionalUser(credential.user))) {
-      try {
-        await signOut(auth);
-      } catch {
-        throw authPolicyError('auth/session-cleanup-failed');
-      }
-      if (!isInstitutionalEmail(credential.user.email || '')) {
-        throw authPolicyError('auth/domain-not-authorized');
-      }
-      throw authPolicyError('auth/google-email-not-verified');
-    }
+    if (!supabase) throw Object.assign(new Error('Autenticação não configurada.'), { code: 'auth/not-configured' });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    if (error) throw error;
   }, []);
 
   const logout = useCallback(async () => {
-    if (auth) await signOut(auth);
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   }, []);
 
   const value = useMemo(() => ({
-    configured: firebaseConfigured,
+    configured: supabaseConfigured,
     loading,
     initializationError,
     profileSyncError,

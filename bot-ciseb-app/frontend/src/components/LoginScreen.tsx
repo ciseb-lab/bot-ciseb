@@ -14,9 +14,10 @@ function friendlyAuthError(error: unknown): string {
     case 'auth/not-configured':
       return 'O acesso institucional ainda não está configurado. Procure o suporte.';
     case 'auth/unauthorized-domain':
-      return 'Este endereço do aplicativo ainda não está autorizado no Firebase Authentication.';
+    case 'redirect_uri_mismatch':
+      return 'Este endereço ainda não está autorizado para login.';
     case 'auth/operation-not-allowed':
-      return 'O login Google não está habilitado para este projeto Firebase.';
+      return 'O login Google não está habilitado na autenticação do aplicativo.';
     case 'auth/account-exists-with-different-credential':
       return 'Esta conta já está cadastrada por outro método. Procure o suporte institucional para vinculá-la com segurança.';
     case 'auth/popup-blocked':
@@ -79,7 +80,7 @@ export function LoginScreen() {
           {!configured ? (
             <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
               <h2 className="font-semibold">Autenticação ainda não configurada</h2>
-              <p className="mt-2">Configure as variáveis públicas `VITE_FIREBASE_*` conforme `docs/FIREBASE_SETUP.md` e gere novamente o frontend. Nunca coloque credenciais privadas no navegador.</p>
+              <p className="mt-2">Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no ambiente do frontend. Nunca coloque credenciais privadas no navegador.</p>
             </div>
           ) : (
             <div className="mx-auto w-full max-w-md">
@@ -112,7 +113,7 @@ export function LoginScreen() {
               </button>
 
               <p className="mt-8 border-t border-slate-100 pt-4 text-center text-[11px] leading-5 text-slate-400">
-                O Firebase Authentication gerencia sua sessão. O BOT CISEB não recebe nem armazena sua senha Google.
+                O provedor de autenticação gerencia sua sessão. O BOT CISEB não recebe nem armazena sua senha Google.
               </p>
             </div>
           )}

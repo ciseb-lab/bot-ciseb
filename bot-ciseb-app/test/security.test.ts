@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import type { NextFunction, Request, Response } from 'express';
-import { createRateLimitMiddleware, hasVerifiedInstitutionalIdentity, isKnownInvalidIdTokenError, validateChatPayload, validatePdfPayload, validateCurriculumQuery } from '../backend/security.ts';
+import { createRateLimitMiddleware, hasVerifiedInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery } from '../backend/security.ts';
 
 function createResponse() {
   const headers = new Map<string, string>();
@@ -36,43 +36,18 @@ function invokeValidator(validator: typeof validateChatPayload | typeof validate
 }
 
 describe('Validação de requisições e limites', () => {
-  test('distingue tokens inválidos de falhas de infraestrutura do Firebase Auth', () => {
-    assert.equal(isKnownInvalidIdTokenError({ code: 'auth/id-token-expired' }), true);
-    assert.equal(isKnownInvalidIdTokenError({ code: 'auth/id-token-revoked' }), true);
-    assert.equal(isKnownInvalidIdTokenError({ code: 'auth/insufficient-permission' }), false);
-    assert.equal(isKnownInvalidIdTokenError(new Error('falha de rede')), false);
-  });
-
-  test('só considera válida identidade autenticada, verificada e do domínio exato', () => {
+  test('só considera válida identidade do domínio institucional exato', () => {
     assert.equal(hasVerifiedInstitutionalIdentity({
       uid: 'user-1',
       email: 'person@escola.seduc.pa.gov.br',
-      email_verified: true,
-      firebase: { sign_in_provider: 'google.com' },
     }), true);
     assert.equal(hasVerifiedInstitutionalIdentity({
       uid: 'user-2',
       email: 'person@seduc.pa.gov.br',
-      email_verified: true,
-      firebase: { sign_in_provider: 'google.com' },
     }), true);
     assert.equal(hasVerifiedInstitutionalIdentity({
       uid: 'user-1',
-      email: 'person@escola.seduc.pa.gov.br',
-      email_verified: false,
-      firebase: { sign_in_provider: 'google.com' },
-    }), false);
-    assert.equal(hasVerifiedInstitutionalIdentity({
-      uid: 'user-1',
-      email: 'person@seduc.pa.gov.br',
-      email_verified: true,
-      firebase: { sign_in_provider: 'password' },
-    }), false);
-    assert.equal(hasVerifiedInstitutionalIdentity({
-      uid: 'user-1',
       email: 'person@outro.gov.br',
-      email_verified: true,
-      firebase: { sign_in_provider: 'google.com' },
     }), false);
   });
 

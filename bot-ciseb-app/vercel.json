@@ -1,15 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
-  "functions": {
-    "api/**/*.ts": {
-      "includeFiles": "{dist/**,backend/documents/**}"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/health",
-      "destination": "/api/health"
-    }
-  ]
+  "outputDirectory": "dist"
 }

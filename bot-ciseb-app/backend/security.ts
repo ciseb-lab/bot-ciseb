@@ -1,9 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { isIP } from 'node:net';
-import { Timestamp } from 'firebase-admin/firestore';
-import { adminAppCheck, adminAuth, adminFirestore } from './firebaseAdmin.ts';
+import { getConfig } from './config.ts';
 import { isInstitutionalEmail } from '../shared/authPolicy.ts';
+import {
+  AuthenticationError,
+  readBearerToken,
+  verifySupabaseAccessToken,
+} from './supabaseAuth.ts';
+import { getSupabaseAdminClient } from './supabaseAdmin.ts';
 
 export interface AuthenticatedIdentity {
   uid: string;
@@ -38,36 +43,27 @@ export interface RateLimitAttempt {
 }
 
 type RateLimitCheck = (attempt: RateLimitAttempt) => Promise<RateLimitDecision>;
+const configuredLimits = getConfig();
 
-const INVALID_ID_TOKEN_ERROR_CODES = new Set([
-  'auth/argument-error',
-  'auth/id-token-expired',
-  'auth/id-token-revoked',
-  'auth/invalid-id-token',
-  'auth/user-disabled',
-]);
-
-export function isKnownInvalidIdTokenError(error: unknown): boolean {
-  if (!error || typeof error !== 'object' || !('code' in error) || typeof error.code !== 'string') {
-    return false;
-  }
-  return INVALID_ID_TOKEN_ERROR_CODES.has(error.code);
-}
-
-function configuredPositiveInteger(name: string, fallback: number): number {
-  const parsed = Number(process.env[name]);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+export function hasVerifiedInstitutionalIdentity(identity: {
+  uid?: unknown;
+  email?: unknown;
+}): identity is { uid: string; email: string } {
+  return typeof identity.uid === 'string'
+    && identity.uid.length > 0
+    && typeof identity.email === 'string'
+    && isInstitutionalEmail(identity.email);
 }
 
 export const securityLimits = {
-  chatPerMinute: configuredPositiveInteger('CHAT_RATE_LIMIT_PER_MINUTE', 10),
-  chatPerDay: configuredPositiveInteger('CHAT_RATE_LIMIT_PER_DAY', 100),
-  apiPerIpMinute: configuredPositiveInteger('API_RATE_LIMIT_PER_IP_PER_MINUTE', 30),
-  pdfPerMinute: configuredPositiveInteger('PDF_RATE_LIMIT_PER_MINUTE', 5),
-  pdfPerIpMinute: configuredPositiveInteger('PDF_RATE_LIMIT_PER_IP_PER_MINUTE', 10),
-  chatMaxChars: configuredPositiveInteger('CHAT_MAX_INPUT_CHARS', 4000),
-  historyMaxChars: configuredPositiveInteger('CHAT_HISTORY_MAX_CHARS', 1200),
-  maxChatConcurrency: configuredPositiveInteger('CHAT_MAX_CONCURRENCY_PER_USER', 2),
+  chatPerMinute: configuredLimits.chatPerMinute,
+  chatPerDay: configuredLimits.chatPerDay,
+  apiPerIpMinute: configuredLimits.apiPerIpMinute,
+  pdfPerMinute: configuredLimits.pdfPerMinute,
+  pdfPerIpMinute: configuredLimits.pdfPerIpMinute,
+  chatMaxChars: configuredLimits.chatMaxInputChars,
+  historyMaxChars: configuredLimits.chatHistoryMaxChars,
+  maxChatConcurrency: configuredLimits.chatMaxConcurrencyPerUser,
 };
 
 export function validateChatPayload(req: Request, res: Response, next: NextFunction): void {
@@ -125,79 +121,32 @@ export function validateCurriculumCode(req: Request, res: Response, next: NextFu
   next();
 }
 
-export function hasVerifiedInstitutionalIdentity(claims: {
-  uid?: unknown;
-  email?: unknown;
-  email_verified?: unknown;
-  firebase?: unknown;
-}): claims is {
-  uid: string;
-  email: string;
-  email_verified: true;
-  firebase: { sign_in_provider: 'google.com' };
-} {
-  const firebaseClaims = claims.firebase;
-  return typeof claims.uid === 'string'
-    && claims.uid.length > 0
-    && claims.email_verified === true
-    && typeof claims.email === 'string'
-    && isInstitutionalEmail(claims.email)
-    && typeof firebaseClaims === 'object'
-    && firebaseClaims !== null
-    && 'sign_in_provider' in firebaseClaims
-    && firebaseClaims.sign_in_provider === 'google.com';
-}
-
-export async function requireAppCheck(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const isRequired = process.env.APP_CHECK_REQUIRED === 'true';
-  const token = req.header('X-Firebase-AppCheck');
-  if (!token && !isRequired) return next();
-  if (!token) {
-    res.status(401).json({ code: 'APP_CHECK_REQUIRED', error: 'Não foi possível validar este aplicativo. Atualize a página e tente novamente.' });
-    return;
-  }
-  if (!adminAppCheck) {
-    res.status(503).json({ code: 'APP_CHECK_UNAVAILABLE', error: 'A validação segura do aplicativo ainda não está configurada.' });
-    return;
-  }
-  try {
-    await adminAppCheck.verifyToken(token);
-    next();
-  } catch {
-    res.status(401).json({ code: 'APP_CHECK_INVALID', error: 'A validação do aplicativo expirou. Atualize a página e tente novamente.' });
-  }
-}
-
 export async function requireInstitutionalIdentity(req: Request, res: Response, next: NextFunction): Promise<void> {
-  if (!adminAuth) {
-    res.status(503).json({ error: 'A autenticação do servidor ainda não está configurada.' });
-    return;
-  }
-  const authorization = req.header('Authorization') || '';
-  const match = authorization.match(/^Bearer ([A-Za-z0-9._~-]+)$/);
-  if (!match) {
-    res.status(401).json({ code: 'AUTH_REQUIRED', error: 'Entre com seu e-mail institucional para continuar.' });
-    return;
-  }
   try {
-    const decoded = await adminAuth.verifyIdToken(match[1], true);
-    if (!hasVerifiedInstitutionalIdentity(decoded)) {
+    const identity = await verifySupabaseAccessToken(
+      readBearerToken(req.header('Authorization')),
+      getConfig(),
+    );
+    if (!hasVerifiedInstitutionalIdentity(identity)) {
       res.status(403).json({ code: 'GOOGLE_INSTITUTIONAL_ACCOUNT_REQUIRED', error: 'Acesse com uma conta Google verificada de um domínio institucional autorizado.' });
       return;
     }
-    req.identity = { uid: decoded.uid, email: decoded.email.toLowerCase() };
+    req.identity = identity;
     next();
   } catch (error) {
-    if (isKnownInvalidIdTokenError(error)) {
-      res.status(401).json({ code: 'SESSION_EXPIRED', error: 'Sua sessão expirou. Entre novamente para continuar.' });
+    if (error instanceof AuthenticationError) {
+      res.status(error.status).json({ code: error.responseCode, error: error.message });
       return;
     }
-
-    const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
-      ? error.code
-      : 'unknown';
-    console.error(JSON.stringify({ severity: 'ERROR', event: 'id_token_verification_failed', code }));
-    res.status(503).json({ code: 'AUTH_VERIFICATION_UNAVAILABLE', error: 'Não foi possível validar sua sessão no servidor. Tente novamente em instantes.' });
+    console.error(JSON.stringify({
+      severity: 'ERROR',
+      event: 'supabase_identity_verification_failed',
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    }));
+    res.status(503).json({
+      code: 'AUTH_VERIFICATION_UNAVAILABLE',
+      error: 'Não foi possível validar sua sessão no servidor. Tente novamente em instantes.',
+    });
   }
 }
 
@@ -207,60 +156,39 @@ function getClientIp(req: Request): string {
   return isIP(normalized) ? normalized : 'unknown';
 }
 
-function getWindowStart(now: number, windowMs: number): number {
-  return Math.floor(now / windowMs) * windowMs;
-}
-
-function retryDelayUntil(windowStart: number, windowMs: number, now: number): number {
-  return Math.max(1, Math.ceil((windowStart + windowMs - now) / 1000));
-}
-
-async function consumeRateLimit({ policy, identity, clientIp, now }: RateLimitAttempt): Promise<RateLimitDecision> {
-  if (!adminFirestore) throw new Error('Rate limiting requires Firestore Admin.');
-  const minuteStart = getWindowStart(now, 60_000);
-  const dayStart = getWindowStart(now, 86_400_000);
-  const ipDigest = createHash('sha256').update(clientIp).digest('hex').slice(0, 40);
-  const uidRef = adminFirestore.collection('rateLimitCounters').doc(`user_${policy.scope}_${identity.uid}`);
-  const ipRef = adminFirestore.collection('rateLimitCounters').doc(`ip_${policy.scope}_${ipDigest}`);
-  const expiry = Timestamp.fromMillis(now + 90 * 86_400_000);
-
-  return adminFirestore.runTransaction(async transaction => {
-    const [uidSnapshot, ipSnapshot] = await Promise.all([transaction.get(uidRef), transaction.get(ipRef)]);
-    const uidData = uidSnapshot.data() || {};
-    const ipData = ipSnapshot.data() || {};
-    const uidMinuteCount = uidData.minuteWindow === minuteStart ? Number(uidData.minuteCount) || 0 : 0;
-    const uidDayCount = uidData.dayWindow === dayStart ? Number(uidData.dayCount) || 0 : 0;
-    const ipMinuteCount = ipData.minuteWindow === minuteStart ? Number(ipData.minuteCount) || 0 : 0;
-    const delay = Math.max(
-      uidMinuteCount >= policy.uidMinuteLimit ? retryDelayUntil(minuteStart, 60_000, now) : 0,
-      policy.uidDailyLimit && uidDayCount >= policy.uidDailyLimit ? retryDelayUntil(dayStart, 86_400_000, now) : 0,
-      ipMinuteCount >= policy.ipMinuteLimit ? retryDelayUntil(minuteStart, 60_000, now) : 0,
-    );
-    if (delay > 0) return { allowed: false, retryAfterSeconds: delay };
-
-    transaction.set(uidRef, {
-      minuteWindow: minuteStart,
-      minuteCount: uidMinuteCount + 1,
-      ...(policy.uidDailyLimit ? { dayWindow: dayStart, dayCount: uidDayCount + 1 } : {}),
-      expireAt: expiry,
-    }, { merge: true });
-    transaction.set(ipRef, {
-      minuteWindow: minuteStart,
-      minuteCount: ipMinuteCount + 1,
-      expireAt: expiry,
-    }, { merge: true });
-    return { allowed: true, retryAfterSeconds: 0 };
+async function consumeRateLimit({
+  policy, identity, clientIp,
+}: RateLimitAttempt): Promise<RateLimitDecision> {
+  const client = await getSupabaseAdminClient();
+  const clientIpHash = createHash('sha256').update(clientIp).digest('hex');
+  const { data, error } = await client.rpc('consume_request_rate_limit', {
+    p_scope: policy.scope,
+    p_user_id: identity.uid,
+    p_client_ip_hash: clientIpHash,
+    p_uid_minute_limit: policy.uidMinuteLimit,
+    p_uid_daily_limit: policy.uidDailyLimit ?? null,
+    p_ip_minute_limit: policy.ipMinuteLimit,
   });
+  if (error) throw error;
+  const decision = Array.isArray(data) ? data[0] : data;
+  if (!decision || typeof decision !== 'object' || !('allowed' in decision)
+    || !('retry_after_seconds' in decision)) throw new Error('Invalid rate limit response.');
+  return {
+    allowed: decision.allowed === true,
+    retryAfterSeconds: Number(decision.retry_after_seconds) || 0,
+  };
 }
 
-export function createRateLimitMiddleware(policy: RateLimitPolicy, check: RateLimitCheck = consumeRateLimit) {
+export function createRateLimitMiddleware(
+  policy: RateLimitPolicy,
+  check: RateLimitCheck = consumeRateLimit,
+) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const identity = req.identity;
     if (!identity) {
       res.status(401).json({ code: 'AUTH_REQUIRED', error: 'Entre com seu e-mail institucional para continuar.' });
       return;
     }
-
     try {
       const decision = await check({ policy, identity, clientIp: getClientIp(req), now: Date.now() });
       if (!decision.allowed) {
@@ -286,33 +214,32 @@ export function rateLimit(policy: RateLimitPolicy) {
 export function limitConcurrentChats(maxActive: number) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const identity = req.identity;
-    if (!identity || !adminFirestore) {
+    if (!identity) {
+      res.status(401).json({ code: 'AUTH_REQUIRED', error: 'Entre com seu e-mail institucional para continuar.' });
+      return;
+    }
+    const client = await getSupabaseAdminClient().catch(() => null);
+    if (!client) {
       res.status(503).json({ error: 'O controle de concorrência ainda não está configurado.' });
       return;
     }
-    const lockRef = adminFirestore.collection('rateLimitCounters').doc(`concurrency_${identity.uid}`);
+
     const requestId = randomUUID();
-    const now = Date.now();
-    const leaseMs = 120_000;
     try {
-      const decision = await adminFirestore.runTransaction(async transaction => {
-        const snapshot = await transaction.get(lockRef);
-        const data = snapshot.data() || {};
-        const leases = data.leases && typeof data.leases === 'object' ? data.leases as Record<string, unknown> : {};
-        const activeLeases = Object.fromEntries(Object.entries(leases).filter(([, until]) => typeof until === 'number' && until > now));
-        if (Object.keys(activeLeases).length >= maxActive) {
-          const nextLease = Math.min(...Object.values(activeLeases).map(until => Number(until)));
-          return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((nextLease - now) / 1000)) };
-        }
-        transaction.set(lockRef, {
-          leases: { ...activeLeases, [requestId]: now + leaseMs },
-          expireAt: Timestamp.fromMillis(now + 86_400_000),
-        }, { merge: true });
-        return { allowed: true, retryAfterSeconds: 0 };
+      const { data, error } = await client.rpc('acquire_chat_lease', {
+        p_user_id: identity.uid,
+        p_request_id: requestId,
+        p_max_active: maxActive,
+        p_lease_ms: 120_000,
       });
-      if (!decision.allowed) {
-        res.setHeader('Retry-After', String(decision.retryAfterSeconds));
-        res.status(429).json({ error: 'Você já tem solicitações em andamento. Aguarde a conclusão antes de enviar outra.', retryAfterSeconds: decision.retryAfterSeconds });
+      if (error) throw error;
+      const decision = Array.isArray(data) ? data[0] : data;
+      if (!decision || typeof decision !== 'object' || !('allowed' in decision)
+        || !('retry_after_seconds' in decision)) throw new Error('Invalid concurrency response.');
+      const retryAfterSeconds = Number(decision.retry_after_seconds) || 0;
+      if (decision.allowed !== true) {
+        res.setHeader('Retry-After', String(retryAfterSeconds));
+        res.status(429).json({ error: 'Você já tem solicitações em andamento. Aguarde a conclusão antes de enviar outra.', retryAfterSeconds });
         return;
       }
 
@@ -321,16 +248,10 @@ export function limitConcurrentChats(maxActive: number) {
         if (released) return;
         released = true;
         try {
-          await adminFirestore!.runTransaction(async transaction => {
-            const snapshot = await transaction.get(lockRef);
-            const data = snapshot.data() || {};
-            const releaseTime = Date.now();
-            const leases = data.leases && typeof data.leases === 'object' ? data.leases as Record<string, unknown> : {};
-            const activeLeases = Object.fromEntries(Object.entries(leases).filter(([id, until]) => id !== requestId && typeof until === 'number' && until > releaseTime));
-            transaction.set(lockRef, { leases: activeLeases, expireAt: Timestamp.fromMillis(releaseTime + 86_400_000) }, { merge: true });
-          });
+          const { error } = await client.rpc('release_chat_lease', { p_request_id: requestId });
+          if (error) throw error;
         } catch {
-          // The lease expires automatically, so a failed release never grants extra concurrency.
+          console.error(JSON.stringify({ severity: 'WARNING', event: 'chat_concurrency_release_failed' }));
         }
       };
       res.once('finish', () => { void release(); });

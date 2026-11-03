@@ -16,7 +16,7 @@ test('health responde sem inicializar a base documental', async () => {
   try {
     const response = await fetch(`${baseUrl}/api/health`);
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { status: 'ok', documentsReady: false });
+    assert.deepEqual(await response.json(), { status: 'ok' });
 
     const allowedOrigin = await fetch(`${baseUrl}/api/health`, {
       headers: { Origin: 'https://bot-ciseb.vercel.app' },

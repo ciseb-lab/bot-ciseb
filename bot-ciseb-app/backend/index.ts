@@ -16,24 +16,16 @@ import {
 } from './documentKnowledge.ts';
 import type { DocumentIndex } from './documentKnowledge.ts';
 import { generatePdf } from './pdfExport.ts';
-import { securityLimits, rateLimit, limitConcurrentChats, requireAppCheck, requireInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery, validateCurriculumCode } from './security.ts';
-import { isFirebaseAdminConfigured } from './firebaseAdmin.ts';
+import { securityLimits, rateLimit, limitConcurrentChats, requireInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery, validateCurriculumCode } from './security.ts';
+import { getConfig } from './config.ts';
 
-const isProd = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT) || 3000;
-const DOCUMENTS_DIRECTORY = process.env.DOCUMENTS_DIR
-  || path.resolve(process.cwd(), 'backend', 'documents');
+const runtimeConfig = getConfig();
+const isProd = runtimeConfig.isProduction;
+const PORT = runtimeConfig.port;
+const DOCUMENTS_DIRECTORY = runtimeConfig.documentsDirectory;
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
-const allowedOrigins = new Set(
-  (process.env.APP_ORIGINS || (isProd ? '' : 'http://localhost:5173,http://localhost:3000'))
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(Boolean),
-);
-const configuredProxyHops = Number(process.env.TRUST_PROXY_HOPS);
-const trustedProxyHops = Number.isInteger(configuredProxyHops) && configuredProxyHops >= 0
-  ? configuredProxyHops
-  : (process.env.K_SERVICE ? 1 : 0);
+const allowedOrigins = new Set(runtimeConfig.appOrigins);
+const trustedProxyHops = runtimeConfig.trustedProxyHops;
 
 export const app = express();
 app.set('trust proxy', trustedProxyHops > 0 ? trustedProxyHops : false);
@@ -46,7 +38,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Firebase-AppCheck');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
     res.setHeader('Access-Control-Max-Age', '600');
   }
 
@@ -56,9 +48,9 @@ app.use((req, res, next) => {
 
   return next();
 });
-app.use(express.json({ limit: process.env.API_JSON_LIMIT || '200kb', strict: true }));
+app.use(express.json({ limit: runtimeConfig.apiJsonLimit, strict: true }));
 app.get(['/health', '/api/health'], (_req, res) => {
-  res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });
+  res.json({ status: 'ok' });
 });
 const apiRouteMethods: Array<{ matches: (pathname: string) => boolean; methods: string[] }> = [
   { matches: pathname => pathname === '/health' || pathname === '/api/health', methods: ['GET', 'HEAD'] },
@@ -75,27 +67,66 @@ app.use((req, res, next) => {
   res.setHeader('Allow', route.methods.join(', '));
   return res.sendStatus(405);
 });
-app.use('/api', requireAppCheck, requireInstitutionalIdentity);
-app.use('/api', async (_req, _res, next) => {
-  try {
-    await initializeBackend();
-    next();
-  } catch (error) {
-    next(error);
-  }
+app.use('/api', requireInstitutionalIdentity);
+app.use((req, res, next) => {
+  const needsDocuments = req.path === '/api/chat'
+    || req.path.startsWith('/api/documents/')
+    || req.path.startsWith('/api/curriculum/validate/');
+  if (!needsDocuments) return next();
+  void getDocumentIndex().then(
+    () => next(),
+    () => res.status(503).json({ error: 'A base documental não está disponível neste momento.' }),
+  );
 });
 
 // Initialize server-side Gemini client
-const apiKey = process.env.GEMINI_API_KEY || '';
-const ai = apiKey
-  ? new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        timeout: Number(process.env.GEMINI_TIMEOUT_MS) || 45_000,
-      },
-    })
-  : null;
 let documentIndex: DocumentIndex | undefined;
+let documentInitialization: Promise<DocumentIndex> | undefined;
+let ai: GoogleGenAI | null | undefined;
+
+function getGeminiClient(): GoogleGenAI | null {
+  if (ai !== undefined) return ai;
+  const apiKey = runtimeConfig.geminiApiKey;
+  ai = apiKey
+    ? new GoogleGenAI({
+        apiKey,
+        httpOptions: { timeout: runtimeConfig.geminiTimeoutMs },
+      })
+    : null;
+  return ai;
+}
+
+async function getDocumentIndex(): Promise<DocumentIndex> {
+  if (!documentInitialization) {
+    documentInitialization = loadDocumentIndex(DOCUMENTS_DIRECTORY)
+      .then(index => {
+        documentIndex = index;
+        console.info(JSON.stringify({
+          severity: 'INFO',
+          event: 'document_index_loaded',
+          sourceCount: index.sources.length,
+          chunkCount: index.chunks.length,
+          unavailableSourceCount: index.sourcesUnavailable.length,
+        }));
+        return index;
+      })
+      .catch(error => {
+        documentInitialization = undefined;
+        const code = error && typeof error === 'object' && 'code' in error
+          && ['ENOENT', 'EACCES', 'EISDIR'].includes(String(error.code))
+          ? String(error.code)
+          : undefined;
+        console.error(JSON.stringify({
+          severity: 'ERROR',
+          event: 'document_index_load_failed',
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          ...(code ? { code } : {}),
+        }));
+        throw error;
+      });
+  }
+  return documentInitialization;
+}
 
 function normalizeForMatching(value: string): string {
   return value
@@ -200,9 +231,7 @@ Reproduza código e texto curricular como oficiais somente quando ambos tiverem 
 
 // API: Document lookup and search
 app.get('/api/documents/status', (_req, res) => {
-  if (!documentIndex) {
-    return res.status(503).json({ ready: false, error: 'A base documental ainda não foi carregada.' });
-  }
+  if (!documentIndex) return res.status(503).json({ ready: false, error: 'A base documental ainda não foi carregada.' });
 
   res.json({
     ready: true,
@@ -289,15 +318,13 @@ app.post(
     const message = (req.body.message as string).trim();
     const history = sanitizeHistory(req.body?.history);
 
-    if (!documentIndex) {
-      return res.status(503).json({ error: 'A base documental ainda não está disponível.' });
-    }
+    const documents = await getDocumentIndex();
 
     const retrievalQuery = [
       ...history.filter(item => item.role === 'user').slice(-2).map(item => item.content),
       message,
     ].join('\n');
-    const relevantDocuments = searchDocumentIndex(documentIndex.chunks, retrievalQuery, 4);
+    const relevantDocuments = searchDocumentIndex(documents.chunks, retrievalQuery, 4);
     const groundedDocuments = [...new Map(relevantDocuments.map(document => [
       `${document.source}:${document.pageNumber || ''}`,
       { source: document.source, title: document.title, pageNumber: document.pageNumber },
@@ -314,7 +341,7 @@ app.post(
       });
     }
 
-    const candidateSkills = findCandidateSkills(message, documentIndex);
+    const candidateSkills = findCandidateSkills(message, documents);
     for (const candidate of candidateSkills) {
       if (!groundedDocuments.some(document => document.source === candidate.document.source && document.pageNumber === candidate.document.pageNumber)) {
         groundedDocuments.push({
@@ -326,7 +353,12 @@ app.post(
     }
     const promptMessage = buildEvidencePrompt(message, relevantDocuments, candidateSkills);
 
-    if (ai) {
+    const gemini = getGeminiClient();
+    if (!gemini) {
+      return res.status(503).json({ error: 'A integração com o serviço de IA não está configurada neste ambiente.' });
+    }
+
+    {
       // Build conversation turns for Gemini
       const contents: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }> = [];
 
@@ -347,7 +379,7 @@ app.post(
       let response;
       const startedAt = Date.now();
       try {
-        response = await ai.models.generateContent({
+        response = await gemini.models.generateContent({
           model: GEMINI_MODEL,
           contents,
           config: {
@@ -358,8 +390,14 @@ app.post(
         });
       } catch (error) {
         const code = typeof error === 'object' && error !== null && 'status' in error ? String(error.status) : 'provider_error';
+        const timedOut = error instanceof Error
+          && (/timeout|timed out/i.test(error.name) || /timeout|timed out/i.test(error.message));
         console.error(JSON.stringify({ severity: 'ERROR', event: 'gemini_request_failed', model: GEMINI_MODEL, durationMs: Date.now() - startedAt, code }));
-        return res.status(502).json({ error: 'Não foi possível conectar ao provedor de IA configurado. Verifique a conexão e tente novamente.' });
+        return res.status(timedOut ? 504 : 502).json({
+          error: timedOut
+            ? 'O serviço de IA demorou demais para responder. Tente novamente.'
+            : 'Não foi possível conectar ao provedor de IA configurado. Verifique a conexão e tente novamente.',
+        });
       }
 
       const usage = response.usageMetadata;
@@ -389,22 +427,6 @@ app.post(
         groundedSkills: candidateSkills.map(candidate => candidate.skill),
         groundedDocuments,
       });
-    } else {
-      const fallbackSections = [
-        'A busca documental está disponível, mas a geração conversacional de propostas não está configurada neste ambiente. Não vou apresentar um plano genérico como se fosse uma resposta elaborada para o seu pedido.',
-        relevantDocuments.length > 0
-          ? `### Trechos localizados\n${relevantDocuments.map(document => `**${document.title}${document.pageNumber ? `, PDF p. ${document.pageNumber}` : ''}:** ${document.text}`).join('\n\n')}`
-          : '',
-        candidateSkills.length > 0
-          ? `### Habilidades conferidas nos PDFs\n${candidateSkills.map(({ skill, document }) => `- **${skill.code}** — ${skill.verbatimText} (${document.title}${document.pageNumber ? `, PDF p. ${document.pageNumber}` : ''})`).join('\n')}`
-          : '',
-        'Para conversar sobre a proposta e desenvolvê-la, configure GEMINI_API_KEY no ambiente do servidor.',
-      ].filter(Boolean);
-      return res.json({
-        reply: fallbackSections.join('\n\n'),
-        groundedSkills: candidateSkills.map(candidate => candidate.skill),
-        groundedDocuments,
-      });
     }
   } catch (error) {
     console.error(JSON.stringify({ severity: 'ERROR', event: 'chat_request_failed' }));
@@ -415,15 +437,6 @@ app.post(
 });
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint da API não encontrado.' }));
-
-if (isProd) {
-  const frontendDirectory = path.resolve(process.cwd(), 'dist');
-  app.use(express.static(frontendDirectory, { index: false }));
-  app.get('*', (_req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    res.sendFile(path.join(frontendDirectory, 'index.html'));
-  });
-}
 
 const requestErrorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
   const details = error as { status?: number; statusCode?: number; type?: string };
@@ -440,65 +453,7 @@ const requestErrorHandler: ErrorRequestHandler = (error: unknown, _req, res, _ne
 };
 app.use(requestErrorHandler);
 
-// The local developer server also serves Vite; production serves the built app.
-let backendInitialization: Promise<void> | undefined;
-
-async function initializeBackend(): Promise<void> {
-  if (!backendInitialization) {
-    let failureReason = 'backend_configuration';
-    backendInitialization = (async () => {
-      try {
-        if (isProd && !process.env.GEMINI_API_KEY) {
-          failureReason = 'gemini_api_key_missing';
-          throw new Error('GEMINI_API_KEY precisa ser configurada como variável secreta do backend em produção.');
-        }
-        if (isProd && !isFirebaseAdminConfigured()) {
-          failureReason = 'firebase_admin_unconfigured';
-          throw new Error('Configure FIREBASE_PROJECT_ID e credenciais Firebase Admin válidas para o ambiente de produção.');
-        }
-        failureReason = 'document_index_load';
-        documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
-        console.log(
-          `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis, ${documentIndex.sourcesUnavailable.length} indisponíveis.`
-        );
-        if (documentIndex.sourcesUnavailable.length > 0) {
-          console.warn(
-            `PDFs que não puderam ser lidos: ${documentIndex.sourcesUnavailable.join(', ')}`
-          );
-        }
-        if (documentIndex.sourcesWithoutText.length > 0) {
-          console.warn(
-            `PDFs sem texto pesquisável (OCR necessário): ${documentIndex.sourcesWithoutText.join(', ')}`
-          );
-        }
-      } catch (error) {
-        const code = error && typeof error === 'object' && 'code' in error
-          && ['ENOENT', 'EACCES', 'EISDIR'].includes(String(error.code))
-          ? String(error.code)
-          : undefined;
-        console.error(JSON.stringify({
-          severity: 'ERROR',
-          event: 'backend_initialization_failed',
-          reason: failureReason,
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-          ...(code ? { code } : {}),
-        }));
-        throw error;
-      }
-    })();
-  }
-  const initialization = backendInitialization;
-  try {
-    await initialization;
-  } catch (error) {
-    if (backendInitialization === initialization) backendInitialization = undefined;
-    throw error;
-  }
-}
-
 export async function startServer() {
-  await initializeBackend();
-
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({

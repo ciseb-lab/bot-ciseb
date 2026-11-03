@@ -1,28 +1,20 @@
 # Bot CISEB
 
-Assistente de apoio à formação e às práticas pedagógicas da educação pública do Pará. Consulta documentos institucionais em PDF, ajuda a desenvolver propostas e habilidades curriculares sem apresentar o catálogo local como fonte normativa, mantém histórico por conta autenticada e permite revisar e exportar respostas em PDF.
+Assistente de apoio à formação e às práticas pedagógicas da educação pública do Pará. Consulta documentos institucionais em PDF, ajuda a desenvolver propostas e habilidades curriculares, sincroniza o histórico entre dispositivos e permite exportar respostas em PDF.
 
-## Arquitetura e tecnologias
+## Arquitetura
 
-- `frontend/`: aplicação React, componentes, estilos, Firebase Web SDK e assets estáticos.
-- `backend/`: API Express, autenticação Firebase Admin, segurança, integração Gemini, geração PDF e documentos institucionais.
-- `shared/`: política de domínio e catálogo curricular usados pelo cliente e pelo servidor.
-- Raiz: comandos npm, dependências, configuração Vite/TypeScript, testes e documentação.
-- Tecnologias do frontend: React 19, TypeScript, Vite e Firebase Web SDK.
-- Tecnologias do backend: Node.js, Express e `@google/genai`; a chave Gemini permanece exclusivamente no servidor.
-- Identidade e persistência: Firebase Authentication e Cloud Firestore Lite no cliente, com regras restritivas; operações do histórico exigem conexão e não têm fila offline.
-- Documentos: PDFs locais indexados em trechos no início do servidor (RAG; não há retreinamento do modelo).
-- PDF: conteúdo revisado no cliente é enviado à API para geração do arquivo.
-- Deploy documentado: frontend Vite e API Express no Vercel; Firebase Authentication e Cloud Firestore fornecem identidade, histórico e limites.
+- `frontend/`: React, TypeScript, Vite e autenticação Google via Supabase Auth.
+- `backend/`: API Express, autenticação e persistência Supabase, Gemini, documentos e exportação PDF.
+- `shared/`: política de domínios institucionais e catálogo curricular.
+- `supabase/migrations/`: tabelas, políticas RLS e funções SQL para persistência e limites de uso.
+- O frontend estático é publicado na Vercel; a API e os PDFs são executados juntos no Cloud Run.
 
-Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md), [segurança](docs/SECURITY.md), [custos Gemini](docs/AI_COST_OPTIMIZATION.md) e [deploy no Vercel](DEPLOY.md).
+O histórico é armazenado no Supabase Postgres com RLS por usuário; a chave de serviço fica somente no ambiente do backend.
 
-## Pré-requisitos e execução local
+## Desenvolvimento local
 
-- Node.js 24.12+; a versão local validada nesta atualização é 24.14.0.
-- npm, Firebase project configurado para uso real ou Firebase CLI para os emuladores.
-
-Na raiz do projeto:
+Requisitos: Node.js 24.x e npm.
 
 ```powershell
 Copy-Item ..\.env.example .env.local
@@ -30,30 +22,29 @@ npm ci
 npm run dev
 ```
 
-O servidor integrado Express/Vite usa `http://localhost:3000`. Preencha `.env.local` com as variáveis públicas `VITE_FIREBASE_*`, `FIREBASE_PROJECT_ID` e, para chamadas Gemini, `GEMINI_API_KEY`. Nunca coloque credenciais administrativas ou a chave Gemini em variáveis `VITE_*`. A API requer sessão Firebase verificada; consulte [Firebase setup](docs/FIREBASE_SETUP.md) para emuladores e configuração real.
+Configure `.env.local` com as variáveis de desenvolvimento listadas em `../.env.example`. Não compartilhe nem versione chaves privadas. O servidor Express/Vite local usa `http://localhost:3000`; sem Supabase configurado, a tela informa que o login ainda não está disponível.
 
 ## Comandos
 
 ```powershell
 npm run dev       # API e frontend de desenvolvimento
-npm test          # testes unitários sem serviços reais
+npm test          # testes locais sem serviços reais
 npm run lint      # verificação TypeScript
 npm run build     # frontend de produção em dist/
-npm start         # servidor Node (sem Vite em produção)
+npm start         # API Node para o Cloud Run
 ```
 
-Os testes que dependem de Firebase podem ser executados com os emuladores conforme a documentação. `dist/` é gerado pelo build: mantenha-o local para deploy, não o trate como fonte. `node_modules/` é local e pode ser recriado por `npm ci` usando `package-lock.json`.
+## Serviços e configuração
 
-## Configuração de ambiente
+1. Crie um projeto Supabase, habilite Google em **Authentication > Sign In / Providers** e configure os domínios de callback em **Authentication > URL Configuration**.
+2. Execute as migrations em `supabase/migrations/` no SQL Editor do projeto Supabase.
+3. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY` e `APP_ORIGINS` como variáveis do serviço Cloud Run. Nunca coloque chaves de serviço ou Gemini em variáveis `VITE_*`.
+4. Configure `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e `VITE_API_BASE_URL` no projeto Vercel antes do build. `VITE_API_BASE_URL` aponta para a URL pública da API Cloud Run.
 
-`.env.example` inclui a configuração pública do app Firebase Web; mantenha credenciais administrativas e demais segredos fora do arquivo. Na Vercel, cadastre os segredos do backend no ambiente de servidor; `FIREBASE_SERVICE_ACCOUNT_JSON` nunca deve receber prefixo `VITE_`. As configurações `VITE_FIREBASE_*` são públicas e não substituem Authentication, Security Rules ou autorização do servidor. Configure a origem do site em `APP_ORIGINS` e não habilite App Check obrigatório antes de configurar e testar a chave do provedor em cada ambiente.
+O guia [DEPLOY.md](DEPLOY.md) descreve a configuração passo a passo. Domínios autorizados para login ficam centralizados em `shared/authPolicy.ts`.
 
-## Documentos e respostas
+## API e documentos
 
-Os nove PDFs de `backend/documents/` são indexados ao iniciar a API. A cada pergunta, a recuperação local seleciona até quatro trechos relevantes e remove duplicatas; somente contexto recente limitado é enviado ao Gemini. Referências informam o arquivo e a página física quando identificável. PDFs digitalizados precisam de OCR para busca textual. O status está em `/api/documents/status` (requer sessão autenticada).
+O Express preserva as rotas `/api/health`, `/api/chat`, `/api/documents/status`, `/api/documents/:source`, `/api/curriculum/skills`, `/api/curriculum/validate/:code` e `/api/export/pdf`. Chamadas privadas usam access token Supabase no cabeçalho Bearer. Documentos são indexados sob demanda; a indisponibilidade dos PDFs não impede o servidor de iniciar nem a rota pública de health de responder.
 
-O modelo configurado é `gemini-3.5-flash-lite`. A resposta pode ficar incompleta ao atingir o teto de geração; nesse caso, a interface informa isso explicitamente. Métricas agregadas de tokens e duração não incluem conteúdo das conversas. Consulte [otimização de custos](docs/AI_COST_OPTIMIZATION.md).
-
-## Deploy e preservação de dados
-
-O guia [DEPLOY.md](DEPLOY.md) descreve frontend e backend no Vercel. A API exige credenciais Firebase Admin seguras configuradas no ambiente do servidor; nenhum segredo é criado ou publicado pelo projeto. Históricos no `localStorage` não são migrados automaticamente: a pessoa usuária inicia a importação e mantém a cópia local. O Firestore mantém conversas até exclusão pelo usuário; não há política de expiração automática de histórico configurada. PDFs e documentos institucionais existentes devem ser preservados.
+Histórico existente em `localStorage` não é apagado automaticamente; a interface oferece importação para o usuário autenticado. Consulte [arquitetura](docs/ARCHITECTURE.md), [segurança](docs/SECURITY.md) e [otimização de custos](docs/AI_COST_OPTIMIZATION.md).

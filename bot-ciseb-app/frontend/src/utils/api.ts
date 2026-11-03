@@ -1,5 +1,4 @@
-import { signOut } from 'firebase/auth';
-import { auth, firebaseRequestHeaders } from '../firebase/client.ts';
+import { supabase } from '../supabase/client.ts';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
@@ -12,7 +11,7 @@ export async function readApiJson(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     if (!response.ok) {
-      throw new Error(`A API retornou erro HTTP ${response.status}. Verifique os logs da Function na Vercel.`);
+      throw new Error(`A API retornou erro HTTP ${response.status}. Verifique o status do serviço backend.`);
     }
     throw new Error('A API retornou uma resposta em formato inesperado.');
   }
@@ -26,14 +25,17 @@ export async function readApiJson(response: Response): Promise<unknown> {
 
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
-  const firebaseHeaders = await firebaseRequestHeaders();
-  for (const [name, value] of Object.entries(firebaseHeaders)) headers.set(name, value);
+  if (!supabase) throw new Error('O acesso institucional ainda não está configurado.');
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (!session?.access_token) throw new Error('Sua sessão expirou. Entre novamente para continuar.');
+  headers.set('Authorization', `Bearer ${session.access_token}`);
   const response = await fetch(apiUrl(path), { ...init, headers });
-  if (response.status === 401 && auth?.currentUser) {
+  if (response.status === 401) {
     const data: unknown = await response.clone().json().catch(() => null);
     if (data && typeof data === 'object' && 'code' in data
       && data.code === 'SESSION_EXPIRED') {
-      await signOut(auth);
+      await supabase.auth.signOut();
     }
   }
   return response;

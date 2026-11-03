@@ -1,9 +1,8 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { User } from 'firebase/auth';
-import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore/lite';
 import { X } from 'lucide-react';
 import { apiFetch, readApiJson } from './utils/api.ts';
 import { useAuth } from './auth/AuthContext.tsx';
+import type { InstitutionalUser } from './auth/AuthContext.tsx';
 import { LoginScreen } from './components/LoginScreen.tsx';
 import { Sidebar, ChatSession } from './components/Sidebar.tsx';
 import type { GroundedDocumentReference, Message } from './components/ChatView.tsx';
@@ -129,7 +128,7 @@ export default function App() {
   );
 }
 
-function AuthenticatedApp({ user }: { user: User }) {
+function AuthenticatedApp({ user }: { user: InstitutionalUser }) {
   const { logout } = useAuth();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [legacyConversations] = useState(() => loadLegacyConversationsForUser(user.uid));
@@ -142,7 +141,7 @@ function AuthenticatedApp({ user }: { user: User }) {
   const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
-  const cursorRef = useRef<QueryDocumentSnapshot<DocumentData> | undefined>(undefined);
+  const cursorRef = useRef<import('./data/conversationStore.ts').ConversationCursor | undefined>(undefined);
   const loadedConversationIds = useRef(new Set<string>());
   const [activeSessionId, setActiveSessionId] = useState('draft');
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
