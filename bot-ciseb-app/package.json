@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx backend/bootstrap.ts",
     "build": "vite build",
-    "test": "tsx --test test/apiRoutes.test.ts test/authPolicy.test.ts test/conversationStore.test.ts test/curriculum.test.ts test/documentKnowledge.test.ts test/firebaseAdminCompatibility.test.ts test/pdfExport.test.ts test/security.test.ts",
+    "test": "tsx --test test/apiRoutes.test.ts test/authPolicy.test.ts test/conversationStore.test.ts test/curriculum.test.ts test/documentKnowledge.test.ts test/firebaseAdminCompatibility.test.ts test/pdfExport.test.ts test/planBHealth.test.js test/security.test.ts",
     "test:firestore-rules": "firebase emulators:exec --config firebase.emulator.json --project demo-bot-ciseb-rules --only firestore \"tsx --test test/firestoreRules.test.ts\"",
     "start": "tsx backend/bootstrap.ts",
     "preview": "vite preview",
