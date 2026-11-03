@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { test } from 'node:test';
 
 process.env.NODE_ENV = 'test';
+process.env.APP_ORIGINS = 'https://bot-ciseb.vercel.app';
 const { app } = await import('../backend/index.ts');
 
 test('health responde sem inicializar a base documental', async () => {
@@ -16,6 +17,17 @@ test('health responde sem inicializar a base documental', async () => {
     const response = await fetch(`${baseUrl}/api/health`);
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { status: 'ok', documentsReady: false });
+
+    const allowedOrigin = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: 'https://bot-ciseb.vercel.app' },
+    });
+    assert.equal(allowedOrigin.status, 200);
+    assert.equal(allowedOrigin.headers.get('access-control-allow-origin'), 'https://bot-ciseb.vercel.app');
+
+    const blockedOrigin = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: 'https://example.com' },
+    });
+    assert.equal(blockedOrigin.status, 403);
 
     const documentStatus = await fetch(`${baseUrl}/api/documents/status`);
     assert.notEqual(documentStatus.status, 404);

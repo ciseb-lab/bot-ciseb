@@ -37,9 +37,6 @@ const trustedProxyHops = Number.isInteger(configuredProxyHops) && configuredProx
 
 export const app = express();
 app.set('trust proxy', trustedProxyHops > 0 ? trustedProxyHops : false);
-if (isProd && allowedOrigins.size === 0) {
-  throw new Error('APP_ORIGINS precisa conter as origens HTTPS autorizadas em produção.');
-}
 app.use((req, res, next) => {
   const origin = req.get('origin');
   const isAllowedOrigin = Boolean(origin && allowedOrigins.has(origin));
