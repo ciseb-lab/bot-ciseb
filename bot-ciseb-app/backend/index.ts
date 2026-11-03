@@ -217,7 +217,10 @@ app.get('/api/documents/status', (_req, res) => {
 
 app.get('/api/documents/:source', (req, res) => {
   const source = req.params.source;
-  if (!documentIndex || !documentIndex.sources.includes(source) || path.basename(source) !== source) {
+  if (!documentIndex) {
+    return res.status(503).json({ error: 'A base documental ainda não está disponível.' });
+  }
+  if (!documentIndex.sources.includes(source) || path.basename(source) !== source) {
     return res.status(404).json({ error: 'Documento não encontrado na base disponível.' });
   }
 
@@ -443,7 +446,7 @@ app.use(requestErrorHandler);
 // The local developer server also serves Vite; production serves the built app.
 let backendInitialization: Promise<void> | undefined;
 
-async function initializeBackend(): Promise<void> {
+export async function initializeBackend(): Promise<void> {
   if (!backendInitialization) {
     let failureReason = 'backend_configuration';
     backendInitialization = (async () => {
@@ -457,7 +460,24 @@ async function initializeBackend(): Promise<void> {
           throw new Error('Configure FIREBASE_PROJECT_ID e credenciais Firebase Admin válidas para o ambiente de produção.');
         }
         failureReason = 'document_index_load';
-        documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
+        try {
+          documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
+        } catch (error) {
+          const code = error && typeof error === 'object' && 'code' in error
+            ? String(error.code)
+            : undefined;
+          const isMissingDocuments = code === 'ENOENT'
+            || (error instanceof Error && error.message.startsWith('Nenhum PDF foi encontrado'));
+          if (!isMissingDocuments) throw error;
+          documentIndex = undefined;
+          console.warn(JSON.stringify({
+            severity: 'WARNING',
+            event: 'document_index_unavailable',
+            errorName: error instanceof Error ? error.name : 'UnknownError',
+            ...(code ? { code } : {}),
+          }));
+        }
+        if (!documentIndex) return;
         console.log(
           `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis, ${documentIndex.sourcesUnavailable.length} indisponíveis.`
         );

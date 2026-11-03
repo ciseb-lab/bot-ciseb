@@ -1,13 +1,26 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { test } from 'node:test';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { after, test } from 'node:test';
 
 process.env.NODE_ENV = 'test';
 process.env.APP_ORIGINS = 'https://bot-ciseb.vercel.app';
-const { app } = await import('../backend/index.ts');
+const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'bot-ciseb-api-test-'));
+process.env.DOCUMENTS_DIR = path.join(temporaryDirectory, 'missing-documents');
+const { app, initializeBackend } = await import('../backend/index.ts');
 
-test('health responde sem inicializar a base documental', async () => {
+after(async () => {
+  await rm(temporaryDirectory, { recursive: true, force: true });
+});
+
+test('a ausência dos PDFs não impede a inicialização do backend', async () => {
+  await initializeBackend();
+});
+
+test('health responde sem base documental e mantém CORS e métodos restritos', async () => {
   const server = createServer(app);
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address() as AddressInfo;
