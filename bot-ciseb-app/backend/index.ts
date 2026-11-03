@@ -60,6 +60,21 @@ app.use(express.json({ limit: process.env.API_JSON_LIMIT || '200kb', strict: tru
 app.get(['/health', '/api/health'], (_req, res) => {
   res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });
 });
+const apiRouteMethods: Array<{ matches: (pathname: string) => boolean; methods: string[] }> = [
+  { matches: pathname => pathname === '/health' || pathname === '/api/health', methods: ['GET', 'HEAD'] },
+  { matches: pathname => pathname === '/api/chat', methods: ['POST'] },
+  { matches: pathname => pathname === '/api/documents/status', methods: ['GET', 'HEAD'] },
+  { matches: pathname => /^\/api\/documents\/[^/]+$/.test(pathname), methods: ['GET', 'HEAD'] },
+  { matches: pathname => pathname === '/api/curriculum/skills', methods: ['GET', 'HEAD'] },
+  { matches: pathname => /^\/api\/curriculum\/validate\/[^/]+$/.test(pathname), methods: ['GET', 'HEAD'] },
+  { matches: pathname => pathname === '/api/export/pdf', methods: ['POST'] },
+];
+app.use((req, res, next) => {
+  const route = apiRouteMethods.find(candidate => candidate.matches(req.path));
+  if (!route || route.methods.includes(req.method)) return next();
+  res.setHeader('Allow', route.methods.join(', '));
+  return res.sendStatus(405);
+});
 app.use('/api', requireAppCheck, requireInstitutionalIdentity);
 app.use('/api', async (_req, _res, next) => {
   try {

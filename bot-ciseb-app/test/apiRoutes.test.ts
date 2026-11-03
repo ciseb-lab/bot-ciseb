@@ -29,6 +29,10 @@ test('health responde sem inicializar a base documental', async () => {
     });
     assert.equal(blockedOrigin.status, 403);
 
+    const wrongMethod = await fetch(`${baseUrl}/api/chat`);
+    assert.equal(wrongMethod.status, 405);
+    assert.equal(wrongMethod.headers.get('allow'), 'POST');
+
     const documentStatus = await fetch(`${baseUrl}/api/documents/status`);
     assert.notEqual(documentStatus.status, 404);
     assert.ok([401, 503].includes(documentStatus.status));
