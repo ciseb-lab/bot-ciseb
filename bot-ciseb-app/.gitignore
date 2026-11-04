@@ -27,3 +27,4 @@ firebase-debug.*.log
 !**/metadata.json
 !firebase.emulator.json
 !vercel.json
+!backend/documents/index.json

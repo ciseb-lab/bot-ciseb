@@ -1,18 +1,11 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
 
 function installCanvasGlobal(name: 'DOMMatrix' | 'ImageData' | 'Path2D', value: unknown): void {
   if (!(name in globalThis)) {
     Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
   }
 }
-
-installCanvasGlobal('DOMMatrix', DOMMatrix);
-installCanvasGlobal('ImageData', ImageData);
-installCanvasGlobal('Path2D', Path2D);
-
-const { PDFParse } = await import('pdf-parse');
 
 const CHUNK_LENGTH = 1400;
 const CHUNK_OVERLAP = 180;
@@ -31,6 +24,7 @@ export interface DocumentChunk {
   text: string;
   normalizedText: string;
   tokens: Set<string>;
+  sortedTokens: string[];
   index: number;
 }
 
@@ -73,6 +67,63 @@ function normalize(value: string): string {
     .trim();
 }
 
+function getObject(value: unknown, description: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`Índice documental inválido: ${description} deve ser um objeto.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function getString(value: unknown, description: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`Índice documental inválido: ${description} deve ser texto.`);
+  }
+  return value;
+}
+
+function getOptionalPageNumber(value: unknown, description: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+    throw new Error(`Índice documental inválido: ${description} deve ser um número de página positivo.`);
+  }
+  return value;
+}
+
+function getStringArray(value: unknown, description: string): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Índice documental inválido: ${description} deve ser uma lista.`);
+  }
+  return value.map((item, index) => getString(item, `${description}[${index}]`));
+}
+
+function getArray(value: unknown, description: string): unknown[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Índice documental inválido: ${description} deve ser uma lista.`);
+  }
+  return value;
+}
+
+function createDocumentChunk(
+  source: string,
+  title: string,
+  text: string,
+  index: number,
+  pageNumber?: number,
+): DocumentChunk {
+  const normalizedText = normalize(text);
+  const tokens = new Set(normalizedText.split(' ').filter(Boolean));
+  return {
+    source,
+    title,
+    pageNumber,
+    text,
+    normalizedText,
+    tokens,
+    sortedTokens: [...tokens].sort(),
+    index,
+  };
+}
+
 export function splitDocumentText(
   source: string,
   text: string,
@@ -91,18 +142,14 @@ export function splitDocumentText(
     }
 
     const chunkText = normalized.slice(start, end).trim();
-    const normalizedText = normalize(chunkText);
-    const tokens = new Set(normalizedText.split(' ').filter(Boolean));
     if (chunkText) {
-      chunks.push({
+      chunks.push(createDocumentChunk(
         source,
-        title: path.basename(source, path.extname(source)).replace(/[_-]+/g, ' ').trim(),
+        path.basename(source, path.extname(source)).replace(/[_-]+/g, ' ').trim(),
+        chunkText,
+        indexOffset + chunks.length,
         pageNumber,
-        text: chunkText,
-        normalizedText,
-        tokens,
-        index: indexOffset + chunks.length,
-      });
+      ));
     }
 
     if (end >= normalized.length) break;
@@ -110,6 +157,58 @@ export function splitDocumentText(
   }
 
   return chunks;
+}
+
+export async function loadDocumentIndexFromJson(jsonPath: string): Promise<DocumentIndex> {
+  const parsed: unknown = JSON.parse(await readFile(jsonPath, 'utf8'));
+  const index = getObject(parsed, 'raiz');
+  const sources = getStringArray(index.sources, 'sources');
+  const documents = getArray(index.documents, 'documents').map((value, position) => {
+    const document = getObject(value, `documents[${position}]`);
+    if (typeof document.pageCount !== 'number' || !Number.isInteger(document.pageCount) || document.pageCount < 0) {
+      throw new Error(`Índice documental inválido: documents[${position}].pageCount deve ser um inteiro não negativo.`);
+    }
+    if (typeof document.searchable !== 'boolean') {
+      throw new Error(`Índice documental inválido: documents[${position}].searchable deve ser booleano.`);
+    }
+    return {
+      source: getString(document.source, `documents[${position}].source`),
+      title: getString(document.title, `documents[${position}].title`),
+      pageCount: document.pageCount,
+      searchable: document.searchable,
+    };
+  });
+  const pages = getArray(index.pages, 'pages').map((value, position) => {
+    const page = getObject(value, `pages[${position}]`);
+    return {
+      source: getString(page.source, `pages[${position}].source`),
+      title: getString(page.title, `pages[${position}].title`),
+      pageNumber: getOptionalPageNumber(page.pageNumber, `pages[${position}].pageNumber`),
+      text: getString(page.text, `pages[${position}].text`),
+    };
+  });
+  const chunks = getArray(index.chunks, 'chunks').map((value, position) => {
+    const chunk = getObject(value, `chunks[${position}]`);
+    if (typeof chunk.index !== 'number' || !Number.isInteger(chunk.index) || chunk.index < 0) {
+      throw new Error(`Índice documental inválido: chunks[${position}].index deve ser um inteiro não negativo.`);
+    }
+    return createDocumentChunk(
+      getString(chunk.source, `chunks[${position}].source`),
+      getString(chunk.title, `chunks[${position}].title`),
+      getString(chunk.text, `chunks[${position}].text`),
+      chunk.index,
+      getOptionalPageNumber(chunk.pageNumber, `chunks[${position}].pageNumber`),
+    );
+  });
+
+  return {
+    sources,
+    documents,
+    pages,
+    chunks,
+    sourcesWithoutText: getStringArray(index.sourcesWithoutText, 'sourcesWithoutText'),
+    sourcesUnavailable: getStringArray(index.sourcesUnavailable, 'sourcesUnavailable'),
+  };
 }
 
 export async function loadDocumentIndex(directory: string): Promise<DocumentIndex> {
@@ -122,6 +221,12 @@ export async function loadDocumentIndex(directory: string): Promise<DocumentInde
   if (files.length === 0) {
     throw new Error(`Nenhum PDF foi encontrado na pasta de documentos: ${directory}`);
   }
+
+  const { DOMMatrix, ImageData, Path2D } = await import('@napi-rs/canvas');
+  installCanvasGlobal('DOMMatrix', DOMMatrix);
+  installCanvasGlobal('ImageData', ImageData);
+  installCanvasGlobal('Path2D', Path2D);
+  const { PDFParse } = await import('pdf-parse');
 
   const chunks: DocumentChunk[] = [];
   const indexedPages: DocumentPage[] = [];
@@ -192,6 +297,17 @@ export async function loadDocumentIndex(directory: string): Promise<DocumentInde
   return { sources: files, documents, pages: indexedPages, chunks, sourcesWithoutText, sourcesUnavailable };
 }
 
+function hasTokenPrefix(sortedTokens: string[], prefix: string): boolean {
+  let low = 0;
+  let high = sortedTokens.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (sortedTokens[middle] < prefix) low = middle + 1;
+    else high = middle;
+  }
+  return sortedTokens[low]?.startsWith(prefix) ?? false;
+}
+
 export function searchDocumentIndex(
   chunks: DocumentChunk[],
   query: string,
@@ -223,7 +339,7 @@ export function searchDocumentIndex(
         if (chunk.tokens.has(token)) {
           score += 2 * weight;
           matchedTokens += 1;
-        } else if ([...chunk.tokens].some(chunkToken => chunkToken.startsWith(token))) {
+        } else if (hasTokenPrefix(chunk.sortedTokens, token)) {
           score += weight;
           matchedTokens += 1;
         }

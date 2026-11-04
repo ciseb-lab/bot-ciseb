@@ -12,6 +12,7 @@ import { verifyCurriculumSkill } from './curriculumVerification.ts';
 import type { VerifiedCurriculumSkill } from './curriculumVerification.ts';
 import {
   loadDocumentIndex,
+  loadDocumentIndexFromJson,
   searchDocumentIndex,
 } from './documentKnowledge.ts';
 import type { DocumentIndex } from './documentKnowledge.ts';
@@ -23,6 +24,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT) || 3000;
 const DOCUMENTS_DIRECTORY = process.env.DOCUMENTS_DIR
   || path.resolve(process.cwd(), 'backend', 'documents');
+const DOCUMENT_INDEX_JSON_PATH = path.join(DOCUMENTS_DIRECTORY, 'index.json');
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const allowedOrigins = new Set(
   (process.env.APP_ORIGINS || (isProd ? '' : 'http://localhost:5173,http://localhost:3000'))
@@ -57,8 +59,13 @@ app.use((req, res, next) => {
   return next();
 });
 app.use(express.json({ limit: process.env.API_JSON_LIMIT || '200kb', strict: true }));
-app.get(['/health', '/api/health'], (_req, res) => {
-  res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });
+app.get(['/health', '/api/health'], async (_req, res, next) => {
+  try {
+    await initializeBackend();
+    res.json({ status: 'ok', documentsReady: Boolean(documentIndex) });
+  } catch (error) {
+    next(error);
+  }
 });
 const apiRouteMethods: Array<{ matches: (pathname: string) => boolean; methods: string[] }> = [
   { matches: pathname => pathname === '/health' || pathname === '/api/health', methods: ['GET', 'HEAD'] },
@@ -460,27 +467,46 @@ export async function initializeBackend(): Promise<void> {
           throw new Error('Configure FIREBASE_PROJECT_ID e credenciais Firebase Admin válidas para o ambiente de produção.');
         }
         failureReason = 'document_index_load';
+        const indexLoadStartedAt = Date.now();
+        let indexSource: 'json' | 'pdf' = 'json';
         try {
-          documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
+          documentIndex = await loadDocumentIndexFromJson(DOCUMENT_INDEX_JSON_PATH);
         } catch (error) {
-          const code = error && typeof error === 'object' && 'code' in error
-            ? String(error.code)
-            : undefined;
-          const isMissingDocuments = code === 'ENOENT'
-            || (error instanceof Error && error.message.startsWith('Nenhum PDF foi encontrado'));
-          if (!isMissingDocuments) throw error;
-          documentIndex = undefined;
+          if (isProd) throw error;
           console.warn(JSON.stringify({
             severity: 'WARNING',
-            event: 'document_index_unavailable',
+            event: 'document_index_json_unavailable_falling_back_to_pdfs',
             errorName: error instanceof Error ? error.name : 'UnknownError',
-            ...(code ? { code } : {}),
           }));
+          indexSource = 'pdf';
+          try {
+            documentIndex = await loadDocumentIndex(DOCUMENTS_DIRECTORY);
+          } catch (pdfError) {
+            const code = pdfError && typeof pdfError === 'object' && 'code' in pdfError
+              ? String(pdfError.code)
+              : undefined;
+            const isMissingDocuments = code === 'ENOENT'
+              || (pdfError instanceof Error && pdfError.message.startsWith('Nenhum PDF foi encontrado'));
+            if (!isMissingDocuments) throw pdfError;
+            documentIndex = undefined;
+            console.warn(JSON.stringify({
+              severity: 'WARNING',
+              event: 'document_index_unavailable',
+              errorName: pdfError instanceof Error ? pdfError.name : 'UnknownError',
+              ...(code ? { code } : {}),
+            }));
+          }
         }
         if (!documentIndex) return;
-        console.log(
-          `Base documental carregada: ${documentIndex.sources.length} PDFs, ${documentIndex.chunks.length} trechos pesquisáveis, ${documentIndex.sourcesUnavailable.length} indisponíveis.`
-        );
+        console.info(JSON.stringify({
+          severity: 'INFO',
+          event: 'document_index_loaded',
+          source: indexSource,
+          durationMs: Date.now() - indexLoadStartedAt,
+          documentCount: documentIndex.sources.length,
+          indexedChunkCount: documentIndex.chunks.length,
+          unavailableSourceCount: documentIndex.sourcesUnavailable.length,
+        }));
         if (documentIndex.sourcesUnavailable.length > 0) {
           console.warn(
             `PDFs que não puderam ser lidos: ${documentIndex.sourcesUnavailable.join(', ')}`

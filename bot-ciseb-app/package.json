@@ -7,6 +7,7 @@
   },
   "type": "module",
   "scripts": {
+    "prebuild": "tsx scripts/buildIndex.ts",
     "dev": "tsx backend/bootstrap.ts",
     "build": "vite build",
     "test": "tsx --test test/apiRoutes.test.ts test/authPolicy.test.ts test/conversationStore.test.ts test/curriculum.test.ts test/documentKnowledge.test.ts test/firebaseAdminCompatibility.test.ts test/pdfExport.test.ts test/security.test.ts",

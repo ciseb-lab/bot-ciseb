@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   loadDocumentIndex,
+  loadDocumentIndexFromJson,
   searchDocumentIndex,
   splitDocumentText,
 } from '../backend/documentKnowledge.ts';
@@ -12,6 +13,42 @@ import { findCatalogRecord } from '../shared/curriculumData.ts';
 import { verifyCurriculumSkill } from '../backend/curriculumVerification.ts';
 
 describe('Base documental em PDF', () => {
+  test('carrega o índice JSON e reconstrói os dados derivados usados pela busca', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'bot-ciseb-index-'));
+    const jsonPath = path.join(directory, 'index.json');
+    try {
+      await writeFile(jsonPath, JSON.stringify({
+        sources: ['guia.pdf'],
+        documents: [{ source: 'guia.pdf', title: 'guia', pageCount: 1, searchable: true }],
+        pages: [{
+          source: 'guia.pdf',
+          title: 'guia',
+          pageNumber: 1,
+          text: 'Planejamento da adoção de dispositivos digitais na escola.',
+        }],
+        chunks: [{
+          source: 'guia.pdf',
+          title: 'guia',
+          pageNumber: 1,
+          text: 'Planejamento da adoção de dispositivos digitais na escola.',
+          index: 0,
+        }],
+        sourcesWithoutText: [],
+        sourcesUnavailable: [],
+      }));
+
+      const index = await loadDocumentIndexFromJson(jsonPath);
+
+      assert.equal(index.chunks[0].normalizedText, 'planejamento da adocao de dispositivos digitais na escola');
+      assert.ok(index.chunks[0].tokens.has('adocao'));
+      assert.deepEqual(index.chunks[0].sortedTokens, [...index.chunks[0].tokens].sort());
+      assert.equal(searchDocumentIndex(index.chunks, 'adoção dispositivo').length, 1);
+      assert.equal(index.pages[0].pageNumber, 1);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test('divide textos em trechos e recupera os que correspondem à consulta', () => {
     const chunks = splitDocumentText(
       'guia.pdf',

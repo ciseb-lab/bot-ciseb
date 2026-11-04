@@ -11,7 +11,7 @@ Assistente de apoio à formação e às práticas pedagógicas da educação pú
 - Tecnologias do frontend: React 19, TypeScript, Vite e Firebase Web SDK.
 - Tecnologias do backend: Node.js, Express e `@google/genai`; a chave Gemini permanece exclusivamente no servidor.
 - Identidade e persistência: Firebase Authentication e Cloud Firestore Lite no cliente, com regras restritivas; operações do histórico exigem conexão e não têm fila offline.
-- Documentos: PDFs locais indexados em trechos no início do servidor (RAG; não há retreinamento do modelo).
+- Documentos: PDFs indexados em `backend/documents/index.json` durante o build; o runtime reconstrói tokens em memória sem reprocessar os PDFs (RAG; não há retreinamento do modelo).
 - PDF: conteúdo revisado no cliente é enviado à API para geração do arquivo.
 - Deploy documentado: frontend Vite e API Express no Vercel; Firebase Authentication e Cloud Firestore fornecem identidade, histórico e limites.
 
@@ -50,7 +50,7 @@ Os testes que dependem de Firebase podem ser executados com os emuladores confor
 
 ## Documentos e respostas
 
-Os nove PDFs de `backend/documents/` são indexados ao iniciar a API. A cada pergunta, a recuperação local seleciona até quatro trechos relevantes e remove duplicatas; somente contexto recente limitado é enviado ao Gemini. Referências informam o arquivo e a página física quando identificável. PDFs digitalizados precisam de OCR para busca textual. O status está em `/api/documents/status` (requer sessão autenticada).
+Os nove PDFs de `backend/documents/` são indexados pelo script `prebuild`; na Vercel, a API carrega o JSON gerado em cada instância fria. Localmente, a API usa os PDFs como fallback se o JSON não existir. A cada pergunta, a recuperação local seleciona até quatro trechos relevantes e remove duplicatas; somente contexto recente limitado é enviado ao Gemini. Referências informam o arquivo e a página física quando identificável. PDFs digitalizados precisam de OCR para busca textual. O status está em `/api/documents/status` (requer sessão autenticada).
 
 O modelo configurado é `gemini-3.5-flash-lite`. A resposta pode ficar incompleta ao atingir o teto de geração; nesse caso, a interface informa isso explicitamente. Métricas agregadas de tokens e duração não incluem conteúdo das conversas. Consulte [otimização de custos](docs/AI_COST_OPTIMIZATION.md).
 

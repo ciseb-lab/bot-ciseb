@@ -2,7 +2,7 @@
 
 ## Arquitetura
 
-Este projeto publica o frontend React/Vite e o backend Express no mesmo projeto Vercel. O Express é executado como Vercel Function; os assets do build e os PDFs institucionais são incluídos no bundle conforme `vercel.json`. A API permanece no mesmo domínio do frontend, portanto `VITE_API_BASE_URL` pode ficar vazia.
+Este projeto publica o frontend React/Vite e o backend Express no mesmo projeto Vercel. O Express é executado como Vercel Function; o build gera `backend/documents/index.json` a partir dos PDFs e inclui o índice e os documentos no bundle conforme `vercel.json`. No runtime, cada instância carrega o índice serializado em vez de reprocessar os PDFs; a leitura dos PDFs é fallback apenas local. A API permanece no mesmo domínio do frontend, portanto `VITE_API_BASE_URL` pode ficar vazia.
 
 Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis mínimos, histórico individual e contadores de uso. Gemini é chamado pelo backend; sua chave nunca deve ser configurada em `VITE_*`.
 
@@ -12,10 +12,10 @@ Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis m�
 2. Em **Root Directory**, escolha `bot-ciseb-app` — não a raiz do repositório, que também contém uma versão antiga do app.
 3. Use Node.js 24.x na configuração da Vercel. O `package.json` fixa essa versão para atender aos requisitos do Firebase Admin. O `overrides` fixa `jose` em uma versão com entrada CommonJS porque o `jwks-rsa` usado pelo Firebase Admin ainda o carrega com `require()`.
 4. Configure o install command como `npm ci --include=dev`. A pasta do app deve conter `package-lock.json`.
-5. O `vercel.json` executa `npm run build`; deixe o output directory sem sobrescrita manual. As funções em `api/` encaminham as rotas conhecidas para a aplicação Express, incluindo endpoints aninhados de documentos e currículo; os assets do frontend são servidos pelo diretório `dist`. Depois do deploy, confirme `/api/health` e, com sessão institucional válida, `/api/documents/status`.
+5. O `vercel.json` executa `npm run build`, cujo `prebuild` gera o índice documental; deixe o output directory sem sobrescrita manual. As funções em `api/` encaminham as rotas conhecidas para a aplicação Express, incluindo endpoints aninhados de documentos e currículo; os assets do frontend são servidos pelo diretório `dist`. Depois do deploy, confirme `/api/health` (`documentsReady: true`) e, com sessão institucional válida, `/api/documents/status`.
 6. Configure as variáveis abaixo antes de criar o primeiro deployment. Sem `APP_ORIGINS`, o backend continua inicializando, mas bloqueia todas as origens de navegador; não publique um deployment funcional sem autenticação do backend e CORS configurados.
 
-`@napi-rs/canvas` é uma dependência direta intencional: a API importa seus tipos de canvas e inicializa `DOMMatrix`, `ImageData` e `Path2D` antes de carregar o `pdf-parse`. Isso evita depender do carregamento opcional dinâmico feito pelo PDF.js no runtime Node da Vercel.
+`@napi-rs/canvas` é uma dependência direta intencional para a extração no `prebuild` e o fallback local: os globais `DOMMatrix`, `ImageData` e `Path2D` são inicializados antes de carregar o `pdf-parse`. A API em produção carrega o JSON sem importar essas dependências de extração.
 
 ## Variáveis de ambiente na Vercel
 
@@ -61,14 +61,14 @@ Sem esse segredo (ou uma integração de credenciais sem chave compatível imple
 
 ## Limites e custos
 
-Vercel Functions executa o Express sob limites de duração, tamanho de bundle, memória e cotas do plano escolhido. O carregamento dos PDFs ocorre sob demanda em cada instância fria; acompanhe logs e duração antes de uso amplo. A configuração não habilita faturamento nem cria recursos Firebase.
+Vercel Functions executa o Express sob limites de duração, tamanho de bundle, memória e cotas do plano escolhido. `vercel.json` configura 1024 MB e até 60 segundos para a função, valores conservadores para o processamento do JSON e compatíveis com o plano Hobby; o plano e a configuração da conta ainda podem impor limites próprios. A compilação dos PDFs ocorre no build, não em cada instância fria. A configuração não habilita faturamento nem cria recursos Firebase.
 
 Firebase Authentication e Firestore têm cotas gratuitas sujeitas ao plano e uso. A API grava contadores distribuídos no Firestore, além do histórico; exceder cotas pode interromper chamadas ou gerar custos conforme o plano do projeto. Gemini tem cotas/custos próprios independentes. Não habilite billing sem aprovação.
 
 ## Validação antes do tráfego de usuários
 
-1. `npm ci --include=dev`, `npm test`, `npm run lint` e `npm run build`.
-2. No Vercel Preview, valide `/api/health`, login Google nos dois domínios permitidos, rejeição de domínios externos, sessão expirada, Firestore por UID, chat, documentos e exportação PDF. A verificação de saúde é pública e leve; documentos são inicializados na primeira chamada autenticada à API.
+1. `npm ci --include=dev`, `npm test`, `npm run lint` e `npm run build` (o build extrai novamente os PDFs para gerar `backend/documents/index.json`).
+2. No Vercel Preview, valide `/api/health` (`documentsReady: true`), `/api/documents/status` (com sessão institucional válida), login Google nos dois domínios permitidos, rejeição de domínios externos, sessão expirada, Firestore por UID, chat, documentos e exportação PDF. A verificação de saúde é pública e inicializa a base documental quando necessário.
 3. Confirme que uma conta não consegue ler ou gravar o histórico de outra.
 4. Verifique CORS: origens não listadas em `APP_ORIGINS` devem ser recusadas.
 5. Não use contas ou conversas reais em testes de regras; não faça chamadas Gemini sem controlar o consumo.
