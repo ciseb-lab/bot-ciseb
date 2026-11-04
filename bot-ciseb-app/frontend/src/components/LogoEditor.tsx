@@ -83,12 +83,8 @@ export function LogoEditor() {
   };
 
   const titleColorClass = theme === 'outline'
-    ? 'text-transparent [ -webkit-text-stroke:2px_white ]'
-    : textColor === 'text-gradient-cyan'
-      ? 'bg-gradient-to-r from-[#00f2fe] to-[#4facfe] bg-clip-text text-transparent'
-      : textColor === 'text-gradient-orange'
-        ? 'bg-gradient-to-r from-[#ff0844] to-[#ffb199] bg-clip-text text-transparent'
-        : 'text-white';
+    ? 'theme-outline-text'
+    : textColor;
 
   return (
     <main className="min-h-dvh bg-gray-100 font-sans text-slate-800">
@@ -159,19 +155,19 @@ export function LogoEditor() {
         </div>
       </header>
 
-      <section aria-label="Pré-visualização do logo" className="flex min-h-[calc(100dvh-92px)] items-center justify-center bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:40px_40px] p-4 sm:p-8 lg:p-12">
+      <section aria-label="Pré-visualização do logo" className="bg-grid flex min-h-[calc(100dvh-92px)] items-center justify-center p-4 sm:p-8 lg:p-12">
         <div
-          className={`flex aspect-[16/9] w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl shadow-2xl transition-all duration-500 ${theme === 'glass' ? 'bg-gradient-to-br from-[var(--logo-bg)] to-indigo-600' : ''}`}
-          style={{ backgroundColor: theme === 'glass' ? undefined : background, '--logo-bg': background } as CSSProperties}
+          className={`flex aspect-[16/9] w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl shadow-2xl transition-all duration-500 ${theme === 'glass' ? 'theme-glass' : ''}`}
+          style={{ backgroundColor: theme === 'glass' ? undefined : background, '--bg-color': background } as CSSProperties}
         >
-          <div className={`flex w-full max-w-3xl flex-col items-center px-4 transition-all duration-500 ${theme === 'glass' ? 'rounded-3xl border border-white/20 bg-white/5 px-8 py-8 shadow-2xl backdrop-blur-md sm:px-16' : ''}`}>
+          <div className={`flex w-full max-w-3xl flex-col items-center px-4 transition-all duration-500 ${theme === 'glass' ? 'theme-glass-box' : ''}`}>
             <div
-              className={`mb-1 max-w-full break-all text-center text-[clamp(3rem,12vw,10rem)] font-black leading-none tracking-tighter transition-all duration-300 ${font} ${titleColorClass} ${font === 'font-syncopate' ? 'uppercase tracking-[-0.08em]' : ''} ${theme === '3d' ? 'logo-editor-3d-shadow' : ''} ${theme === 'outline' ? 'logo-editor-outline-text' : ''}`}
+              className={`mb-1 max-w-full break-all text-center text-[clamp(3rem,12vw,10rem)] font-black leading-none tracking-tighter transition-all duration-300 ${font} ${titleColorClass} ${font === 'font-syncopate' ? 'tracking-[-0.08em]' : ''} ${theme === '3d' ? 'theme-3d-shadow' : ''}`}
             >
               {mainText || ' '}
             </div>
             {icon !== 'none' && (
-              <div className={`mb-5 flex w-full items-center gap-4 px-2 opacity-90 sm:mb-6 sm:gap-5 sm:px-8 ${theme === 'outline' ? '[filter:drop-shadow(0_0_10px_rgba(255,255,255,.7))]' : ''}`}>
+              <div className={`mb-5 flex w-full items-center gap-4 px-2 opacity-90 sm:mb-6 sm:gap-5 sm:px-8 ${theme === 'outline' ? 'theme-outline-glow' : ''}`}>
                 <div className="h-[2px] flex-grow rounded-full bg-white" />
                 <div className="flex items-center justify-center gap-3 text-white sm:gap-5">
                   {(icon === 'all' ? ['book', 'star', 'tech'] : [icon]).map(name => (
