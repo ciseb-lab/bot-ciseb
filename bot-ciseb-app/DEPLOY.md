@@ -2,7 +2,7 @@
 
 ## Arquitetura
 
-Este projeto publica o frontend React/Vite e o backend Express no mesmo projeto Vercel. O Express é executado como Vercel Function; o build gera `backend/documents/index.json` a partir dos PDFs e inclui o índice e os documentos no bundle conforme `vercel.json`. No runtime, cada instância carrega o índice serializado em vez de reprocessar os PDFs; a leitura dos PDFs é fallback apenas local. A API permanece no mesmo domínio do frontend, portanto `VITE_API_BASE_URL` pode ficar vazia.
+Este projeto publica o frontend React/Vite e o backend Express no mesmo projeto Vercel. O Express é executado como Vercel Function; o build gera `backend/documents/index.json` a partir dos PDFs e inclui `backend/documents/**` no bundle da função conforme `vercel.json`. No runtime, cada instância carrega o índice serializado em vez de reprocessar os PDFs; a leitura dos PDFs é fallback apenas local. A API permanece no mesmo domínio do frontend, portanto `VITE_API_BASE_URL` pode ficar vazia.
 
 Firebase Authentication gerencia login Google. Cloud Firestore mantém perfis mínimos, histórico individual e contadores de uso. Gemini é chamado pelo backend; sua chave nunca deve ser configurada em `VITE_*`.
 

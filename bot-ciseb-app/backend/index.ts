@@ -527,6 +527,7 @@ export async function initializeBackend(): Promise<void> {
           event: 'backend_initialization_failed',
           reason: failureReason,
           errorName: error instanceof Error ? error.name : 'UnknownError',
+          ...(failureReason === 'document_index_load' ? { documentIndexPath: DOCUMENT_INDEX_JSON_PATH } : {}),
           ...(code ? { code } : {}),
         }));
         throw error;
