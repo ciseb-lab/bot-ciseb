@@ -22,6 +22,33 @@
   font-family: var(--font-display);
 }
 
+.font-montserrat {
+  font-family: 'Montserrat', sans-serif;
+}
+
+.font-inter {
+  font-family: 'Inter', sans-serif;
+}
+
+.font-space {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-syncopate {
+  font-family: 'Syncopate', sans-serif;
+  text-transform: uppercase;
+}
+
+.logo-editor-outline-text {
+  color: transparent;
+  -webkit-text-stroke: 2px white;
+}
+
+.logo-editor-3d-shadow {
+  -webkit-text-stroke: 0;
+  text-shadow: 4px 4px 0 rgba(0, 0, 0, .8), 8px 8px 0 rgba(0, 0, 0, .3);
+}
+
 @media print {
   header, nav, .no-print, button, input, textarea {
     display: none !important;

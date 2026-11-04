@@ -9,6 +9,7 @@ import { Sidebar, ChatSession } from './components/Sidebar.tsx';
 import type { GroundedDocumentReference, Message } from './components/ChatView.tsx';
 import { CurriculumSkill } from '../../shared/curriculumData.ts';
 import { useModalFocus } from './hooks/useModalFocus.ts';
+import { LogoEditor } from './components/LogoEditor.tsx';
 
 const DocsModal = lazy(() => import('./components/DocsModal.tsx').then(module => ({ default: module.DocsModal })));
 const ChatView = lazy(() => import('./components/ChatView.tsx').then(module => ({ default: module.ChatView })));
@@ -119,6 +120,7 @@ function getPdfDraft(message: Message): PdfDraft {
 
 export default function App() {
   const { configured, loading, user, initializationError, profileSyncError } = useAuth();
+  if (window.location.pathname === '/editor-logo') return <LogoEditor />;
   if (loading) return <main className="flex min-h-dvh items-center justify-center bg-[#f2f6fa] text-sm text-slate-500">Restaurando sua sessão institucional…</main>;
   if (!configured || !user || !user.emailVerified) return <LoginScreen />;
   return (
