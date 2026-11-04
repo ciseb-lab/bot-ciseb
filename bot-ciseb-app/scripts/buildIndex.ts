@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDocumentIndex } from '../backend/documentKnowledge.ts';
@@ -25,11 +25,16 @@ const serializedIndex = {
 };
 
 await writeFile(outputPath, `${JSON.stringify(serializedIndex)}\n`, 'utf8');
+const outputStats = await stat(outputPath);
+if (!outputStats.isFile() || outputStats.size === 0) {
+  throw new Error(`O índice documental não foi gerado corretamente: ${outputPath}`);
+}
 console.info(JSON.stringify({
   severity: 'INFO',
   event: 'document_index_built',
   output: path.relative(appDirectory, outputPath),
   documentCount: index.sources.length,
   indexedChunkCount: index.chunks.length,
+  outputBytes: outputStats.size,
   durationMs: Date.now() - startedAt,
 }));

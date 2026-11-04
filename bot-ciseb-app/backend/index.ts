@@ -1,6 +1,8 @@
 import express from 'express';
 import type { ErrorRequestHandler } from 'express';
+import { readdir } from 'node:fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
 import {
   CURRICULUM_CATALOG_RECORDS,
@@ -22,9 +24,30 @@ import { isFirebaseAdminConfigured } from './firebaseAdmin.ts';
 
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT) || 3000;
-const DOCUMENTS_DIRECTORY = process.env.DOCUMENTS_DIR
-  || path.resolve(process.cwd(), 'backend', 'documents');
-const DOCUMENT_INDEX_JSON_PATH = path.join(DOCUMENTS_DIRECTORY, 'index.json');
+const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+const documentDirectoryCandidates = (() => {
+  if (process.env.DOCUMENTS_DIR) {
+    const configuredDirectory = process.env.DOCUMENTS_DIR;
+    return [path.isAbsolute(configuredDirectory)
+      ? configuredDirectory
+      : path.resolve(moduleDirectory, configuredDirectory)];
+  }
+
+  const candidates = new Set<string>();
+  let directory = moduleDirectory;
+  while (true) {
+    if (path.basename(directory) === 'backend') {
+      candidates.add(path.join(directory, 'documents'));
+    }
+    candidates.add(path.join(directory, 'backend', 'documents'));
+    const parentDirectory = path.dirname(directory);
+    if (parentDirectory === directory) break;
+    directory = parentDirectory;
+  }
+  return [...candidates];
+})();
+let DOCUMENTS_DIRECTORY = documentDirectoryCandidates[0];
+let DOCUMENT_INDEX_JSON_PATH = path.join(DOCUMENTS_DIRECTORY, 'index.json');
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const allowedOrigins = new Set(
   (process.env.APP_ORIGINS || (isProd ? '' : 'http://localhost:5173,http://localhost:3000'))
@@ -469,10 +492,53 @@ export async function initializeBackend(): Promise<void> {
         failureReason = 'document_index_load';
         const indexLoadStartedAt = Date.now();
         let indexSource: 'json' | 'pdf' = 'json';
+        const directoryResults = await Promise.all(documentDirectoryCandidates.map(async directory => {
+          try {
+            return { directory, entries: await readdir(directory) };
+          } catch (error) {
+            const code = error && typeof error === 'object' && 'code' in error
+              ? String(error.code)
+              : 'UNKNOWN';
+            return { directory, errorCode: code };
+          }
+        }));
+        const selectedDirectory = directoryResults.find(result => 'entries' in result && result.entries?.includes('index.json'))
+          || directoryResults.find(result => 'entries' in result)
+          || directoryResults[0];
+        if (selectedDirectory) {
+          DOCUMENTS_DIRECTORY = selectedDirectory.directory;
+          DOCUMENT_INDEX_JSON_PATH = path.join(DOCUMENTS_DIRECTORY, 'index.json');
+        }
+        const selectedEntries = selectedDirectory && 'entries' in selectedDirectory
+          ? selectedDirectory.entries
+          : undefined;
+        console.info(JSON.stringify({
+          severity: 'INFO',
+          event: 'document_index_diagnostic',
+          cwd: process.cwd(),
+          indexPath: DOCUMENT_INDEX_JSON_PATH,
+          documentsDirectoryEntries: selectedEntries ?? null,
+          directoryReadError: selectedDirectory && 'errorCode' in selectedDirectory
+            ? selectedDirectory.errorCode
+            : undefined,
+          candidateDirectories: directoryResults.map(result => result.directory),
+        }));
         try {
           documentIndex = await loadDocumentIndexFromJson(DOCUMENT_INDEX_JSON_PATH);
         } catch (error) {
-          if (isProd) throw error;
+          const indexErrorCode = error && typeof error === 'object' && 'code' in error
+            ? String(error.code)
+            : undefined;
+          if (isProd) {
+            console.error(JSON.stringify({
+              severity: 'ERROR',
+              event: 'document_index_load_failed',
+              indexPath: DOCUMENT_INDEX_JSON_PATH,
+              errorName: error instanceof Error ? error.name : 'UnknownError',
+              ...(indexErrorCode ? { code: indexErrorCode } : {}),
+            }));
+            throw new Error(`Não foi possível carregar o índice documental em ${DOCUMENT_INDEX_JSON_PATH}.`, { cause: error });
+          }
           console.warn(JSON.stringify({
             severity: 'WARNING',
             event: 'document_index_json_unavailable_falling_back_to_pdfs',
@@ -528,6 +594,7 @@ export async function initializeBackend(): Promise<void> {
           reason: failureReason,
           errorName: error instanceof Error ? error.name : 'UnknownError',
           ...(failureReason === 'document_index_load' ? { documentIndexPath: DOCUMENT_INDEX_JSON_PATH } : {}),
+          ...(failureReason === 'document_index_load' && error instanceof Error ? { errorMessage: error.message } : {}),
           ...(code ? { code } : {}),
         }));
         throw error;

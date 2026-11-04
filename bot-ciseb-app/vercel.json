@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": "backend/documents/**",
+      "includeFiles": "{dist/**,backend/documents/**}",
       "memory": 1024,
       "maxDuration": 60
     }
