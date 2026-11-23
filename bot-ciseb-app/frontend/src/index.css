@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --expo-in: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-display: 'Syne', sans-serif;
@@ -13,9 +20,73 @@
 }
 
 @layer base {
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
     font-family: var(--font-sans);
   }
+
+  /* Barra de rolagem moderna, fina e sem setas */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 91, 172, 0.28) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: rgba(0, 170, 255, 0.32) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(0, 91, 172, 0.25);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 91, 172, 0.5);
+  }
+
+  .dark *::-webkit-scrollbar-thumb {
+    background: rgba(0, 170, 255, 0.28);
+    border-radius: 9999px;
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 170, 255, 0.55);
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .font-display {

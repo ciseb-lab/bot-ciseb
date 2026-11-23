@@ -1,0 +1,16 @@
+<svg viewBox="0 0 640 228" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DINOV — Diretoria de Inovação">
+  <!-- Wordmark DINOV -->
+  <g>
+    <text x="323" y="114" text-anchor="middle" fill="#005BAC" font-family="'Brigends Expanded', 'Brigends', 'Syne', 'Orbitron', 'Montserrat', sans-serif" font-size="106" font-weight="900" letter-spacing="6">DINOV</text>
+  </g>
+
+  <!-- Divisor e Estrela Central -->
+  <g transform="translate(0, 136)">
+    <line x1="65" y1="0" x2="300" y2="0" stroke="rgba(0, 91, 172, 0.75)" stroke-width="1.8" stroke-linecap="round" />
+    <polygon points="320,-7 322.5,-1.5 328.5,-1.5 323.5,2 325.5,7.5 320,4 314.5,7.5 316.5,2 311.5,-1.5 317.5,-1.5" fill="#00AAFF" stroke="#005BAC" stroke-width="0.75" />
+    <line x1="340" y1="0" x2="575" y2="0" stroke="rgba(0, 91, 172, 0.75)" stroke-width="1.8" stroke-linecap="round" />
+  </g>
+
+  <!-- Subtítulo Institucional -->
+  <text x="321" y="174" text-anchor="middle" fill="#005BAC" font-family="'Arial', 'Helvetica', sans-serif" font-size="22.5" font-weight="700" letter-spacing="2.8">DIRETORIA DE INOVAÇÃO</text>
+</svg>
