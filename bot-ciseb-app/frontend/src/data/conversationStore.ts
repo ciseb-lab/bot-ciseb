@@ -3,7 +3,7 @@ import {
   type Firestore,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore/lite';
-import type { Message } from '../components/ChatView.tsx';
+import type { Message } from '../components/chat/ChatView.tsx';
 import { getFirestoreDatabase } from '../firebase/client.ts';
 import { legacyConversationDocumentId } from './legacyConversationId.ts';
 

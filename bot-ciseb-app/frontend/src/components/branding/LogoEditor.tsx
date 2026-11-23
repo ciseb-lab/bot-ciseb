@@ -94,7 +94,7 @@ export function LogoEditor() {
             <div className="flex h-8 w-8 items-center justify-center rounded bg-blue-600 font-bold text-white">D</div>
             <div>
               <h1 className="text-lg font-bold tracking-tight">DINOV Editor</h1>
-              <a href="/" className="text-xs text-blue-700 underline-offset-2 hover:underline">Voltar ao BOT CISEB</a>
+              <a href="/" className="text-xs text-blue-700 underline-offset-2 hover:underline">Voltar ao MIRI</a>
             </div>
           </div>
           <div className="flex flex-wrap items-end justify-center gap-3 text-sm">

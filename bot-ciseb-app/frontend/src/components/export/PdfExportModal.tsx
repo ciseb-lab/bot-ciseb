@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Download, FileText, LoaderCircle, X } from 'lucide-react';
-import { useModalFocus } from '../hooks/useModalFocus.ts';
+import { useModalFocus } from '../../hooks/useModalFocus.ts';
 
 interface PdfExportModalProps {
   title: string;

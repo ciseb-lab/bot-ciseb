@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Printer, Download, Check, ShieldCheck } from 'lucide-react';
-import { extractMarkdownTables } from '../utils/formatters.ts';
-import { MarkdownText } from './MarkdownText.tsx';
+import { extractMarkdownTables } from '../../utils/formatters.ts';
+import { MarkdownText } from '../chat/MarkdownText.tsx';
 
 interface OfficialPrintViewProps {
   content: string;

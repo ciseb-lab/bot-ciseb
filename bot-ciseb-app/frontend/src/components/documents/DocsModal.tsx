@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BookCheck, Download, ExternalLink, FileText, LoaderCircle, X } from 'lucide-react';
-import { apiFetch, downloadApiFile, readApiJson } from '../utils/api.ts';
-import { useModalFocus } from '../hooks/useModalFocus.ts';
+import { apiFetch, downloadApiFile, readApiJson } from '../../utils/api.ts';
+import { useModalFocus } from '../../hooks/useModalFocus.ts';
 
 interface DocumentSummary {
   source: string;

@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onReset
                 : 'border-transparent text-white/80 hover:text-white'
             }`}
           >
-            Assistente BOT CISEB
+            Assistente MIRI
           </button>
           <button
             onClick={() => setActiveTab('browser')}
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onReset
           onClick={() => setActiveTab('chat')}
           className={`px-2.5 py-1 rounded ${activeTab === 'chat' ? 'bg-[#005BAC] text-[#00AAFF] font-bold' : 'text-white/80'}`}
         >
-          BOT CISEB
+          MIRI
         </button>
         <button
           onClick={() => setActiveTab('browser')}
