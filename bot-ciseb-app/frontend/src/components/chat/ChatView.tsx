@@ -351,3 +351,4 @@ export const ChatView: React.FC<ChatViewProps> = ({
     </main>
   );
 };
+
