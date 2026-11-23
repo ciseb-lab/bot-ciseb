@@ -4,18 +4,18 @@ import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore/lit
 import { X } from 'lucide-react';
 import { apiFetch, readApiJson } from './utils/api.ts';
 import { useAuth } from './auth/AuthContext.tsx';
-import { LoginScreen } from './components/LoginScreen.tsx';
-import { Sidebar, ChatSession } from './components/Sidebar.tsx';
-import type { GroundedDocumentReference, Message } from './components/ChatView.tsx';
+import { LoginScreen } from './components/auth/LoginScreen.tsx';
+import { Sidebar, ChatSession } from './components/chat/Sidebar.tsx';
+import type { GroundedDocumentReference, Message } from './components/chat/ChatView.tsx';
 import { CurriculumSkill } from '../../shared/curriculumData.ts';
 import { useModalFocus } from './hooks/useModalFocus.ts';
-import { LogoEditor } from './components/LogoEditor.tsx';
+import { LogoEditor } from './components/branding/LogoEditor.tsx';
 
-const DocsModal = lazy(() => import('./components/DocsModal.tsx').then(module => ({ default: module.DocsModal })));
-const ChatView = lazy(() => import('./components/ChatView.tsx').then(module => ({ default: module.ChatView })));
-const QuickPlanWizard = lazy(() => import('./components/QuickPlanWizard.tsx').then(module => ({ default: module.QuickPlanWizard })));
-const PdfExportModal = lazy(() => import('./components/PdfExportModal.tsx').then(module => ({ default: module.PdfExportModal })));
-const CurriculumBrowser = lazy(() => import('./components/CurriculumBrowser.tsx').then(module => ({ default: module.CurriculumBrowser })));
+const DocsModal = lazy(() => import('./components/documents/DocsModal.tsx').then(module => ({ default: module.DocsModal })));
+const ChatView = lazy(() => import('./components/chat/ChatView.tsx').then(module => ({ default: module.ChatView })));
+const QuickPlanWizard = lazy(() => import('./components/curriculum/QuickPlanWizard.tsx').then(module => ({ default: module.QuickPlanWizard })));
+const PdfExportModal = lazy(() => import('./components/export/PdfExportModal.tsx').then(module => ({ default: module.PdfExportModal })));
+const CurriculumBrowser = lazy(() => import('./components/curriculum/CurriculumBrowser.tsx').then(module => ({ default: module.CurriculumBrowser })));
 
 interface ChatConversation extends ChatSession {
   messages: Message[];
@@ -468,6 +468,10 @@ function AuthenticatedApp({ user }: { user: User }) {
         hasMoreConversations={hasMoreConversations}
         isLoadingMoreConversations={isLoadingMoreConversations}
         onLoadMoreConversations={handleLoadMoreConversations}
+        userName={user.displayName || ''}
+        userEmail={user.email || ''}
+        userPhotoUrl={user.photoURL}
+        onLogout={() => void logout()}
         onItemClick={item => {
           if (item === 'manual') setIsDocsOpen(true);
           if (item === 'wizard') setIsPlanBuilderOpen(true);
@@ -481,6 +485,7 @@ function AuthenticatedApp({ user }: { user: User }) {
           onSendMessage={handleSendMessage}
           onExportMessage={handleOpenPdfDraft}
           onOpenPlanBuilder={() => setIsPlanBuilderOpen(true)}
+          isSidebarOpen={sidebarOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
           userEmail={user.email || ''}
           onLogout={() => void logout()}
@@ -500,14 +505,14 @@ function AuthenticatedApp({ user }: { user: User }) {
       )}
       {isCurriculumOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
-          <div ref={curriculumDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="curriculum-browser-title">
-            <section className="flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl">
-              <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+          <div ref={curriculumDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-xs sm:p-6" role="dialog" aria-modal="true" aria-labelledby="curriculum-browser-title">
+            <section className="flex max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+              <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-900">
                 <div>
-                  <h2 id="curriculum-browser-title" className="text-sm font-bold text-slate-900">Explorar registros curriculares</h2>
-                  <p className="mt-1 text-xs text-slate-500">Selecione um registro para levá-lo ao chat como ponto de partida.</p>
+                  <h2 id="curriculum-browser-title" className="text-base font-bold text-slate-900 dark:text-slate-100">Habilidades BNCC e Computação</h2>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Busque por tema ou código e envie direto para a conversa com um clique.</p>
                 </div>
-                <button type="button" onClick={() => setIsCurriculumOpen(false)} aria-label="Fechar consulta curricular" className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"><X className="h-5 w-5" /></button>
+                <button type="button" onClick={() => setIsCurriculumOpen(false)} aria-label="Fechar consulta curricular" className="cursor-pointer rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"><X className="h-5 w-5" /></button>
               </header>
               <div className="overflow-y-auto p-4 sm:p-6">
                 <CurriculumBrowser onSelectSkillForPlan={(skill: CurriculumSkill) => {
@@ -521,12 +526,12 @@ function AuthenticatedApp({ user }: { user: User }) {
       )}
       {isPlanBuilderOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
-          <div ref={planBuilderDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Estruturar uma proposta">
-            <div className="relative my-auto w-full max-w-3xl">
+          <div ref={planBuilderDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-xs sm:p-6" role="dialog" aria-modal="true" aria-label="Estruturar uma proposta">
+            <div className="relative my-auto w-full max-w-2xl">
               <button
                 type="button"
                 onClick={() => setIsPlanBuilderOpen(false)}
-                className="absolute right-3 top-3 z-10 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
+                className="absolute right-4 top-4 z-10 cursor-pointer rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                 aria-label="Fechar estruturador"
               >
                 <X className="h-5 w-5" />
