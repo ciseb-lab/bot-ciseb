@@ -48,7 +48,21 @@ const documentDirectoryCandidates = (() => {
 })();
 let DOCUMENTS_DIRECTORY = documentDirectoryCandidates[0];
 let DOCUMENT_INDEX_JSON_PATH = path.join(DOCUMENTS_DIRECTORY, 'index.json');
-const GEMINI_MODEL = 'gemini-3.5-flash-lite';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+const GEMINI_FALLBACK_MODELS = [
+  GEMINI_MODEL,
+  'gemini-3.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+];
+
+function isRetryableGeminiStatus(code: string): boolean {
+  return code === '503' || code === '429' || code === '500' || code === '502' || code === '504' || code === 'provider_error';
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 const allowedOrigins = new Set(
   (process.env.APP_ORIGINS || (isProd ? '' : 'http://localhost:5173,http://localhost:3000'))
     .split(',')
@@ -378,21 +392,49 @@ app.post(
       });
 
       let response;
+      let activeModel = GEMINI_MODEL;
       const startedAt = Date.now();
-      try {
-        response = await ai.models.generateContent({
-          model: GEMINI_MODEL,
-          contents,
-          config: {
-            systemInstruction: BOT_CISEB_SYSTEM_PROMPT,
-            temperature: 0.4,
-            maxOutputTokens: 2048,
-          },
+      let lastCode = 'provider_error';
+
+      for (let attempt = 0; attempt < GEMINI_FALLBACK_MODELS.length; attempt++) {
+        const candidateModel = GEMINI_FALLBACK_MODELS[attempt];
+        activeModel = candidateModel;
+        const attemptStartedAt = Date.now();
+        try {
+          response = await ai.models.generateContent({
+            model: candidateModel,
+            contents,
+            config: {
+              systemInstruction: BOT_CISEB_SYSTEM_PROMPT,
+              temperature: 0.4,
+              maxOutputTokens: 2048,
+            },
+          });
+          break;
+        } catch (error) {
+          lastCode = typeof error === 'object' && error !== null && 'status' in error ? String(error.status) : 'provider_error';
+          const hasNextAttempt = attempt < GEMINI_FALLBACK_MODELS.length - 1 && isRetryableGeminiStatus(lastCode);
+          console.warn(JSON.stringify({
+            severity: hasNextAttempt ? 'WARNING' : 'ERROR',
+            event: hasNextAttempt ? 'gemini_request_retry' : 'gemini_request_failed',
+            model: candidateModel,
+            attempt: attempt + 1,
+            durationMs: Date.now() - attemptStartedAt,
+            code: lastCode,
+          }));
+          if (!hasNextAttempt) {
+            return res.status(502).json({
+              error: 'O serviço de IA está temporariamente sobrecarregado (503). Aguarde alguns instantes e tente enviar novamente.',
+            });
+          }
+          await sleep(500 * (attempt + 1));
+        }
+      }
+
+      if (!response) {
+        return res.status(502).json({
+          error: 'Não foi possível conectar ao provedor de IA configurado. Verifique a conexão e tente novamente.',
         });
-      } catch (error) {
-        const code = typeof error === 'object' && error !== null && 'status' in error ? String(error.status) : 'provider_error';
-        console.error(JSON.stringify({ severity: 'ERROR', event: 'gemini_request_failed', model: GEMINI_MODEL, durationMs: Date.now() - startedAt, code }));
-        return res.status(502).json({ error: 'Não foi possível conectar ao provedor de IA configurado. Verifique a conexão e tente novamente.' });
       }
 
       const usage = response.usageMetadata;
@@ -404,7 +446,7 @@ app.post(
       console.info(JSON.stringify({
         severity: 'INFO',
         event: 'gemini_request_completed',
-        model: GEMINI_MODEL,
+        model: activeModel,
         durationMs: Date.now() - startedAt,
         inputTokens: inputTokens ?? null,
         outputTokens: typeof inputTokens === 'number' ? outputTokens : null,
