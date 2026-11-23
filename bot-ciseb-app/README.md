@@ -15,7 +15,7 @@ Assistente de apoio à formação e às práticas pedagógicas da educação pú
 - PDF: conteúdo revisado no cliente é enviado à API para geração do arquivo.
 - Deploy documentado: frontend Vite e API Express no Vercel; Firebase Authentication e Cloud Firestore fornecem identidade, histórico e limites.
 
-Detalhes: [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md), [segurança](docs/SECURITY.md), [custos Gemini](docs/AI_COST_OPTIMIZATION.md) e [deploy no Vercel](DEPLOY.md).
+Detalhes: [estrutura do projeto](docs/PROJECT_STRUCTURE.md), [arquitetura](docs/ARCHITECTURE.md), [Firebase](docs/FIREBASE_SETUP.md), [segurança](docs/SECURITY.md), [custos Gemini](docs/AI_COST_OPTIMIZATION.md) e [deploy no Vercel](DEPLOY.md).
 
 ## Pré-requisitos e execução local
 
