@@ -2,6 +2,19 @@ export interface MarkdownAstNode {
   type: string;
   value?: unknown;
   children?: MarkdownAstNode[];
+  data?: {
+    hName?: string;
+    hProperties?: {
+      className?: string[];
+      [key: string]: unknown;
+    };
+    hChildren?: Array<{
+      type: string;
+      value?: string;
+      [key: string]: unknown;
+    }>;
+    [key: string]: unknown;
+  };
 }
 
 const HTML_BREAK_ONLY_PATTERN = /^(?:\s*<\/?br\s*\/?>\s*)+$/i;
@@ -9,6 +22,9 @@ const HTML_BREAK_GLOBAL_PATTERN = /<\/?br\s*\/?>/gi;
 const STANDALONE_HTML_BREAK_LINE_PATTERN = /^[ \t]*(?:<\/?br\s*\/?>[ \t]*)+$/gim;
 const CODE_FENCE_PATTERN = /^\s*(`{3,}|~{3,})/;
 const CURRENCY_DOLLAR_PATTERN = /(^|[^\p{L}\\$])(R|US)\$(?=\s*\d)/gu;
+const TALL_MATH_PATTERN = /\\(?:frac|dfrac|cfrac|tfrac|sum|int|iint|iiint|oint|prod|lim|binom|sqrt)\b/;
+const EQUATION_OR_REACTION_PATTERN = /=|\\(?:approx|neq|le|ge|leq|geq|to|rightarrow|Rightarrow|Leftrightarrow|iff)\b|->|<=>/;
+const COMPACT_MATH_CONTAINERS = new Set(['tableCell', 'heading']);
 
 function splitByCodeFences(markdown: string): Array<{ text: string; isCode: boolean }> {
   const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
@@ -66,6 +82,9 @@ function normalizeNonCodeMarkdown(text: string): string {
             .replace(/\\\[([^\n]+?)\\\]/g, (_match, expr: string) => `$${expr.trim()}$`)
             .replace(/\\\(([^\n]+?)\\\)/g, (_match, expr: string) => `$${expr.trim()}$`)
         ))
+        .replace(/^([ \t]*)\$\$([^\n]+?)\$\$[ \t]*$/gm, (_match, indent: string, expr: string) => (
+          `\n${indent}$$\n${indent}${expr.trim()}\n${indent}$$\n`
+        ))
         .replace(/\\\[([\s\S]*?)\\\]/g, (_match, expr: string) => `\n$$\n${expr.trim()}\n$$\n`)
         .replace(/\\\(([^\n]+?)\\\)/g, (_match, expr: string) => `$${expr.trim()}$`);
     })
@@ -105,5 +124,42 @@ function replaceHtmlBreakNodes(node: MarkdownAstNode): void {
 export function remarkHtmlBreaks() {
   return (tree: MarkdownAstNode) => {
     replaceHtmlBreakNodes(tree);
+  };
+}
+
+function enhanceMathNodes(node: MarkdownAstNode, inCompactContainer = false): void {
+  const nextCompact = inCompactContainer || COMPACT_MATH_CONTAINERS.has(node.type);
+
+  if (node.type === 'inlineMath' && typeof node.value === 'string') {
+    const trimmed = node.value.trim();
+    if (TALL_MATH_PATTERN.test(trimmed)) {
+      const shouldPromoteToDisplay = !inCompactContainer && EQUATION_OR_REACTION_PATTERN.test(trimmed);
+      if (shouldPromoteToDisplay) {
+        if (!node.data) node.data = {};
+        node.data.hProperties = {
+          ...(node.data.hProperties || {}),
+          className: ['language-math', 'math-display'],
+        };
+      } else if (!/^\\displaystyle\b/.test(trimmed)) {
+        const displaySizedValue = `\\displaystyle ${trimmed}`;
+        node.value = displaySizedValue;
+        const firstChild = node.data?.hChildren?.[0];
+        if (firstChild && firstChild.type === 'text') {
+          firstChild.value = displaySizedValue;
+        }
+      }
+    }
+    return;
+  }
+
+  if (!Array.isArray(node.children)) return;
+  for (const child of node.children) {
+    enhanceMathNodes(child, nextCompact);
+  }
+}
+
+export function remarkReadableMath() {
+  return (tree: MarkdownAstNode) => {
+    enhanceMathNodes(tree);
   };
 }

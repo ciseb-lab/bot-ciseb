@@ -4,11 +4,16 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import 'katex/dist/katex.min.css';
 import 'katex/contrib/mhchem';
-import { normalizeMarkdownForRendering, remarkHtmlBreaks } from './markdownUtils.ts';
+import { normalizeMarkdownForRendering, remarkHtmlBreaks, remarkReadableMath } from './markdownUtils.ts';
 
 type MarkdownProps = Parameters<typeof ReactMarkdown>[0];
 
-const remarkPlugins: MarkdownProps['remarkPlugins'] = [remarkGfm, remarkMath, remarkHtmlBreaks];
+const remarkPlugins: MarkdownProps['remarkPlugins'] = [
+  remarkGfm,
+  remarkMath,
+  remarkReadableMath,
+  remarkHtmlBreaks,
+];
 const rehypePlugins: MarkdownProps['rehypePlugins'] = [
   [rehypeKatex, { throwOnError: false, strict: false }],
 ];
@@ -41,6 +46,29 @@ const components: Components = {
     <pre className="my-3 overflow-x-auto rounded-md bg-slate-900 p-3 text-sm text-slate-100">
       {children}
     </pre>
+  ),
+  hr: () => <hr className="my-4 border-slate-200 dark:border-slate-700" />,
+  table: ({ children }) => (
+    <div className="my-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+      <table className="w-full border-collapse text-left text-xs sm:text-sm">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="bg-[#E0F2FE]/70 text-slate-900 dark:bg-slate-800 dark:text-slate-100">
+      {children}
+    </thead>
+  ),
+  th: ({ children }) => (
+    <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold last:border-r-0 dark:border-slate-700">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border-b border-r border-slate-200 px-3 py-2 align-top last:border-r-0 dark:border-slate-700">
+      {children}
+    </td>
   ),
 };
 

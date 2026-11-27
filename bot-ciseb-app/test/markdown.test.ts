@@ -10,6 +10,7 @@ import 'katex/contrib/mhchem';
 import {
   normalizeMarkdownForRendering,
   remarkHtmlBreaks,
+  remarkReadableMath,
 } from '../frontend/src/components/chat/markdownUtils.ts';
 
 function renderMarkdown(source: string): string {
@@ -18,7 +19,7 @@ function renderMarkdown(source: string): string {
     React.createElement(
       ReactMarkdown,
       {
-        remarkPlugins: [remarkGfm, remarkMath, remarkHtmlBreaks],
+        remarkPlugins: [remarkGfm, remarkMath, remarkReadableMath, remarkHtmlBreaks],
         rehypePlugins: [[rehypeKatex, { throwOnError: false, strict: false }]],
       },
       normalized,
@@ -61,4 +62,22 @@ test('renderiza fórmulas matemáticas e químicas (mhchem) com KaTeX sem corrom
   assert.ok(html.includes('class="katex-display"'));
   assert.ok(!html.includes('katex-error'));
   assert.ok(html.includes('R$ 50,00 e o transporte R$ 120,00.'));
+});
+
+test('promove equações inline com frações para bloco alinhado e mantém frações em tabela em tamanho legível', () => {
+  const html = renderMarkdown([
+    '- **Média Aritmética:** $M = \\frac{x_1 + x_2 + x_3 + \\cdots + x_n}{n}$ (Onde $x$ são as leituras).',
+    '- **Variação ou Amplitude:**',
+    '  $$A = V_{max} - V_{min}$$',
+    '- **Razão e Proporção:** $\\frac{V_1}{T_1} = \\frac{V_2}{T_2}$',
+    '',
+    '| Item | Fórmula |',
+    '| --- | --- |',
+    '| Metade | $\\frac{1}{2}$ |',
+  ].join('\n'));
+
+  const displayMatches = html.match(/class="katex-display"/g) || [];
+  assert.equal(displayMatches.length, 3);
+  assert.ok(!html.includes('katex-error'));
+  assert.ok(html.includes('<td><span class="katex">'));
 });
