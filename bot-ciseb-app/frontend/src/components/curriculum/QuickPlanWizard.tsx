@@ -9,8 +9,6 @@ import {
   Info,
   Layers,
   MapPin,
-  Maximize2,
-  Minimize2,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -181,8 +179,8 @@ const FORMAT_OPTIONS: Array<{
 
 const RESOURCE_OPTIONS = [
   {
-    label: '100% Desplugada / Sucata e Materiais Reutilizáveis',
-    value: '100% Desplugada / Sucata e Materiais Reutilizáveis',
+    label: '100% Desplugada / Sucata',
+    value: '100% Desplugada / Sucata',
   },
   {
     label: 'Laboratório Maker / Robótica',
@@ -193,8 +191,8 @@ const RESOURCE_OPTIONS = [
     value: 'Sala de Informática',
   },
   {
-    label: 'Celulares dos Estudantes',
-    value: 'Celulares dos Estudantes',
+    label: 'Celulares dos estudantes',
+    value: 'Celulares dos estudantes',
   },
   {
     label: 'Aula de Campo / Território',
@@ -228,7 +226,6 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
   const [docType, setDocType] = useState<PlanningDocumentFormat>('Sequência Didática');
   const [selectedResources, setSelectedResources] = useState<string[]>([]);
   const [schoolContext, setSchoolContext] = useState('');
-  const [isContextExpanded, setIsContextExpanded] = useState(false);
   const [openBlocks, setOpenBlocks] = useState<Record<1 | 2 | 3 | 4, boolean>>({
     1: true,
     2: true,
@@ -440,109 +437,111 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
 
             {openBlocks[1] && (
               <div className="space-y-4 border-t border-slate-200/70 px-4 pb-4 pt-3.5 dark:border-slate-800">
-                {/* Campo 1. Área do Conhecimento */}
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      1. Área do Conhecimento <span className="font-normal text-slate-400">· única ou múltipla (interdisciplinar)</span>
-                    </span>
-                    {selectedAreas.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAreas([])}
-                        className="cursor-pointer text-[11px] font-medium text-[#005BAC] hover:underline dark:text-[#00AAFF]"
-                      >
-                        Limpar áreas
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {KNOWLEDGE_AREAS.map(area => {
-                      const active = selectedAreas.includes(area.id);
-                      const derivedActive = !active && effectiveAreas.includes(area.id);
-                      return (
-                        <button
-                          key={area.id}
-                          type="button"
-                          onClick={() => setSelectedAreas(prev => toggleMulti(prev, area.id))}
-                          className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                            active
-                              ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
-                              : derivedActive
-                                ? 'border border-[#005BAC]/50 bg-[#E0F2FE]/60 text-[#005BAC] dark:border-[#00AAFF]/50 dark:bg-[#005BAC]/25 dark:text-[#9bdcff]'
-                                : 'border border-slate-200 bg-white text-slate-600 hover:border-[#005BAC]/40 hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
-                          }`}
-                        >
-                          {area.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Campo 2. Componente Curricular agrupado por Área */}
-                <div>
-                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      2. Componente Curricular <span className="font-normal text-slate-400">· selecione um ou mais componentes</span>
-                    </span>
-                    <div className="flex items-center gap-3">
+                {/* Campo 1. Área do Conhecimento e Componente Curricular */}
+                <div className="space-y-3">
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        1. Área do Conhecimento e Componente Curricular <span className="font-normal text-slate-400">· seleção única ou múltipla</span>
+                      </span>
                       {selectedAreas.length > 0 && (
                         <button
                           type="button"
-                          onClick={() => setShowAllComponentAreas(prev => !prev)}
-                          className="cursor-pointer text-[11px] font-medium text-slate-500 hover:text-[#005BAC] hover:underline dark:text-slate-400 dark:hover:text-[#00AAFF]"
-                        >
-                          {showAllComponentAreas ? 'Filtrar pelas áreas marcadas' : 'Mostrar todas as áreas'}
-                        </button>
-                      )}
-                      {selectedComponents.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedComponents([])}
+                          onClick={() => setSelectedAreas([])}
                           className="cursor-pointer text-[11px] font-medium text-[#005BAC] hover:underline dark:text-[#00AAFF]"
                         >
-                          Limpar ({selectedComponents.length})
+                          Limpar áreas
                         </button>
                       )}
                     </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {KNOWLEDGE_AREAS.map(area => {
+                        const active = selectedAreas.includes(area.id);
+                        const derivedActive = !active && effectiveAreas.includes(area.id);
+                        return (
+                          <button
+                            key={area.id}
+                            type="button"
+                            onClick={() => setSelectedAreas(prev => toggleMulti(prev, area.id))}
+                            className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                              active
+                                ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
+                                : derivedActive
+                                  ? 'border border-[#005BAC]/50 bg-[#E0F2FE]/60 text-[#005BAC] dark:border-[#00AAFF]/50 dark:bg-[#005BAC]/25 dark:text-[#9bdcff]'
+                                  : 'border border-slate-200 bg-white text-slate-600 hover:border-[#005BAC]/40 hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
+                            }`}
+                          >
+                            {area.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  <div className="space-y-2 rounded-lg border border-slate-200/70 bg-white/80 p-2.5 dark:border-slate-800 dark:bg-slate-900/60">
-                    {displayedAreaGroups.map(area => (
-                      <div key={area.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
-                        <span className="w-44 shrink-0 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          {area.label}
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {area.components.map(componentLabel => {
-                            const active = selectedComponents.includes(componentLabel);
-                            return (
-                              <button
-                                key={componentLabel}
-                                type="button"
-                                onClick={() => setSelectedComponents(prev => toggleMulti(prev, componentLabel))}
-                                className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                                  active
-                                    ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
-                                    : 'border border-slate-200 bg-slate-50/70 text-slate-600 hover:border-[#005BAC]/40 hover:bg-white hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
-                                }`}
-                              >
-                                {componentLabel}
-                              </button>
-                            );
-                          })}
-                        </div>
+                  {/* Componente Curricular agrupado por Área */}
+                  <div>
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Componente <span className="font-normal text-slate-400">· selecione um ou mais para projetos interdisciplinares</span>
+                      </span>
+                      <div className="flex items-center gap-3">
+                        {selectedAreas.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllComponentAreas(prev => !prev)}
+                            className="cursor-pointer text-[11px] font-medium text-slate-500 hover:text-[#005BAC] hover:underline dark:text-slate-400 dark:hover:text-[#00AAFF]"
+                          >
+                            {showAllComponentAreas ? 'Filtrar pelas áreas marcadas' : 'Mostrar todas as áreas'}
+                          </button>
+                        )}
+                        {selectedComponents.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedComponents([])}
+                            className="cursor-pointer text-[11px] font-medium text-[#005BAC] hover:underline dark:text-[#00AAFF]"
+                          >
+                            Limpar ({selectedComponents.length})
+                          </button>
+                        )}
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="space-y-2 rounded-lg border border-slate-200/70 bg-white/80 p-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+                      {displayedAreaGroups.map(area => (
+                        <div key={area.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+                          <span className="w-44 shrink-0 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                            {area.label}
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {area.components.map(componentLabel => {
+                              const active = selectedComponents.includes(componentLabel);
+                              return (
+                                <button
+                                  key={componentLabel}
+                                  type="button"
+                                  onClick={() => setSelectedComponents(prev => toggleMulti(prev, componentLabel))}
+                                  className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                                    active
+                                      ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
+                                      : 'border border-slate-200 bg-slate-50/70 text-slate-600 hover:border-[#005BAC]/40 hover:bg-white hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
+                                  }`}
+                                >
+                                  {componentLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Campo 3. Trilha Formativa / Tema Integrador */}
+                {/* Campo 2. Trilha Formativa / Tema Integrador */}
                 <div className="border-t border-slate-200/70 pt-3.5 dark:border-slate-800">
                   <div className="mb-1.5 flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      3. Trilha Formativa / Tema Integrador <span className="font-normal text-slate-400">· selecione um ou mais temas</span>
+                      2. Trilha Formativa / Tema Integrador <span className="font-normal text-slate-400">· pílulas clicáveis</span>
                     </span>
                     {selectedTrails.length > 0 && (
                       <button
@@ -635,7 +634,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
               <div className="space-y-3 border-t border-slate-200/70 px-4 pb-4 pt-3.5 dark:border-slate-800">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                    4. Etapa e Ano/Série <span className="font-normal text-slate-400">· agrupado por ciclos</span>
+                    3. Etapa e Ano/Série atendida <span className="font-normal text-slate-400">· agrupado por ciclos</span>
                   </span>
                   {hasBlock2 && (
                     <button
@@ -791,7 +790,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
             {openBlocks[3] && (
               <div className="space-y-2.5 border-t border-slate-200/70 px-4 pb-4 pt-3.5 dark:border-slate-800">
                 <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  5. Formato do Documento <span className="font-normal text-slate-400">· cada formato aciona uma arquitetura própria na IA</span>
+                  4. Formato do Documento <span className="font-normal text-slate-400">· cada formato aciona uma arquitetura própria na IA</span>
                 </span>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {FORMAT_OPTIONS.map(option => {
@@ -840,7 +839,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
             )}
           </section>
 
-          {/* BLOCO 4 — INFRAESTRUTURA E TERRITÓRIO */}
+          {/* BLOCO 4: INFRAESTRUTURA E TERRITÓRIO */}
           <section className="rounded-xl border border-slate-200/90 bg-slate-50/60 transition dark:border-slate-800 dark:bg-slate-950/50">
             <button
               type="button"
@@ -853,16 +852,11 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                   <MapPin className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-[#005BAC] dark:text-[#00AAFF]">
-                      Bloco 4 — Infraestrutura e Território
-                    </h3>
-                    <span className="rounded bg-slate-200/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      Opcional
-                    </span>
-                  </div>
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-[#005BAC] dark:text-[#00AAFF]">
+                    Bloco 4: Infraestrutura e Território
+                  </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Quais são as condições reais para desenvolver a proposta?
+                    A “Realidade da Escola”
                   </p>
                 </div>
               </div>
@@ -871,7 +865,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                   <span className="hidden rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 sm:inline-block dark:text-emerald-300">
                     {[
                       selectedResources.length > 0 ? `${selectedResources.length} recurso(s)` : '',
-                      schoolContext.trim() ? 'contexto detalhado' : '',
+                      schoolContext.trim() ? 'contexto informado' : '',
                     ].filter(Boolean).join(' · ')}
                   </span>
                 )}
@@ -884,7 +878,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                 <div>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      6. Recursos disponíveis na escola <span className="font-normal text-slate-400">· a IA usará apenas os marcados</span>
+                      5. Recursos disponíveis na escola <span className="font-normal text-slate-400">· pílulas de múltipla escolha</span>
                     </span>
                     {selectedResources.length > 0 && (
                       <button
@@ -918,35 +912,16 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                 </div>
 
                 <div>
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <label htmlFor="wizard-notes" className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      7. Contexto da Turma ou Escola <span className="font-normal text-slate-400">· opcional</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsContextExpanded(prev => !prev)}
-                      className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-[#005BAC] hover:underline dark:text-[#00AAFF]"
-                    >
-                      {isContextExpanded ? (
-                        <>
-                          <Minimize2 className="h-3 w-3" aria-hidden="true" />
-                          <span>Recolher campo</span>
-                        </>
-                      ) : (
-                        <>
-                          <Maximize2 className="h-3 w-3" aria-hidden="true" />
-                          <span>Expandir campo</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <textarea
+                  <label htmlFor="wizard-notes" className="mb-1.5 block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    6. Contexto da turma ou escola
+                  </label>
+                  <input
                     id="wizard-notes"
-                    rows={isContextExpanded ? 4 : 2}
+                    type="text"
                     value={schoolContext}
                     onChange={event => setSchoolContext(event.target.value)}
-                    placeholder="Ex.: Escola ribeirinha, turma com 35 alunos, foco em aprendizagem ativa, duas aulas semanais, poucos recursos tecnológicos, proximidade com igarapés..."
-                    className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs leading-relaxed text-slate-800 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#00AAFF]"
+                    placeholder="Ex.: Escola ribeirinha, turma com 35 alunos, foco em aprendizagem ativa, 2 aulas semanais..."
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#00AAFF]"
                   />
                 </div>
               </div>
