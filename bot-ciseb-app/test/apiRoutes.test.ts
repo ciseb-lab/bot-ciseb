@@ -10,7 +10,7 @@ process.env.NODE_ENV = 'test';
 process.env.APP_ORIGINS = 'https://bot-ciseb.vercel.app';
 const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'bot-ciseb-api-test-'));
 process.env.DOCUMENTS_DIR = path.join(temporaryDirectory, 'missing-documents');
-const { app, initializeBackend } = await import('../backend/index.ts');
+const { app, initializeBackend, normalizeReplyMarkdown } = await import('../backend/index.ts');
 
 after(async () => {
   await rm(temporaryDirectory, { recursive: true, force: true });
@@ -54,4 +54,28 @@ test('health responde sem base documental e mantém CORS e métodos restritos', 
       server.close(error => error ? reject(error) : resolve());
     });
   }
+});
+
+test('normalizeReplyMarkdown converte <br> em quebra de linha fora de tabelas e código', () => {
+  const input = [
+    '• **Planejamento Reverso:** texto. <br>• **Métodos Diversificados:** outro.',
+    '| Col 1 | • Item 1 <br>• Item 2 |',
+    'Exemplo inline `<br>` mantido e <br/> convertido.',
+    '```html',
+    '<br>',
+    '```',
+  ].join('\n');
+
+  const output = normalizeReplyMarkdown(input);
+  assert.equal(
+    output,
+    [
+      '• **Planejamento Reverso:** texto.  \n• **Métodos Diversificados:** outro.',
+      '| Col 1 | • Item 1 <br>• Item 2 |',
+      'Exemplo inline `<br>` mantido e  \nconvertido.',
+      '```html',
+      '<br>',
+      '```',
+    ].join('\n'),
+  );
 });

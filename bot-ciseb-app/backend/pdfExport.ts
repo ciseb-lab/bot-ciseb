@@ -54,6 +54,7 @@ function removeInlineMarkdown(value: string): string {
     .replace(/__(.*?)__/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/[*_~]/g, '')
+    .replace(/\s*<\/?br\s*\/?>\s*/gi, ' ')
     .replace(/<[^>]*>/g, '')
     .trim();
 }
@@ -107,44 +108,53 @@ function makeLayout(title: string, content: string): LayoutLine[] {
   lines.push({ text: '', font: 'F1', size: 10, indent: 0, gapBefore: 4, leading: 14 });
 
   let inCodeBlock = false;
-  for (const rawLine of content.replace(/\r\n?/g, '\n').split('\n')) {
-    const trimmed = rawLine.trim();
-    if (trimmed.startsWith('```')) {
+  for (const sourceLine of content.replace(/\r\n?/g, '\n').split('\n')) {
+    const sourceTrimmed = sourceLine.trim();
+    if (sourceTrimmed.startsWith('```')) {
       inCodeBlock = !inCodeBlock;
       continue;
     }
-    if (!trimmed || /^---+$/.test(trimmed)) {
-      lines.push({ text: '', font: 'F1', size: 10, indent: 0, gapBefore: 0, leading: 8 });
-      continue;
-    }
 
-    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
-    if (heading) {
-      const level = heading[1].length;
-      const size = level === 1 ? 16 : level === 2 ? 13 : 11;
-      addWrapped(removeInlineMarkdown(heading[2]), 'F2', size, 0, 8);
-      continue;
-    }
+    const isTableRow = !inCodeBlock && sourceTrimmed.startsWith('|') && sourceTrimmed.endsWith('|');
+    const logicalLines = inCodeBlock || isTableRow
+      ? [sourceLine]
+      : sourceLine.split(/<\/?br\s*\/?>/gi);
 
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-      if (/^\|[\s:|-]+\|$/.test(trimmed)) continue;
-      const cells = trimmed.split('|').slice(1, -1).map(cell => removeInlineMarkdown(cell.trim()));
-      addWrapped(cells.join('  ·  '), 'F1', 9.5, 8, 2);
-      continue;
-    }
+    for (const rawLine of logicalLines) {
+      const trimmed = rawLine.trim();
+      if (!trimmed || /^---+$/.test(trimmed)) {
+        lines.push({ text: '', font: 'F1', size: 10, indent: 0, gapBefore: 0, leading: 8 });
+        continue;
+      }
 
-    const bullet = trimmed.match(/^(?:[-*+]\s+|\d+[.)]\s+)(.*)$/);
-    if (bullet) {
-      addWrapped(`• ${removeInlineMarkdown(bullet[1])}`, 'F1', 10.5, 10, 1);
-      continue;
-    }
+      const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+      if (heading) {
+        const level = heading[1].length;
+        const size = level === 1 ? 16 : level === 2 ? 13 : 11;
+        addWrapped(removeInlineMarkdown(heading[2]), 'F2', size, 0, 8);
+        continue;
+      }
 
-    if (trimmed.startsWith('>')) {
-      addWrapped(removeInlineMarkdown(trimmed.replace(/^>\s?/, '')), 'F1', 10.5, 12, 2);
-      continue;
-    }
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        if (/^\|[\s:|-]+\|$/.test(trimmed)) continue;
+        const cells = trimmed.split('|').slice(1, -1).map(cell => removeInlineMarkdown(cell.trim()));
+        addWrapped(cells.join('  ·  '), 'F1', 9.5, 8, 2);
+        continue;
+      }
 
-    addWrapped(removeInlineMarkdown(trimmed), inCodeBlock ? 'F3' : 'F1', 10.5, inCodeBlock ? 12 : 0, 1);
+      const bullet = trimmed.match(/^(?:[-*+]\s+|\d+[.)]\s+)(.*)$/);
+      if (bullet) {
+        addWrapped(`• ${removeInlineMarkdown(bullet[1])}`, 'F1', 10.5, 10, 1);
+        continue;
+      }
+
+      if (trimmed.startsWith('>')) {
+        addWrapped(removeInlineMarkdown(trimmed.replace(/^>\s?/, '')), 'F1', 10.5, 12, 2);
+        continue;
+      }
+
+      addWrapped(removeInlineMarkdown(trimmed), inCodeBlock ? 'F3' : 'F1', 10.5, inCodeBlock ? 12 : 0, 1);
+    }
   }
 
   return lines;

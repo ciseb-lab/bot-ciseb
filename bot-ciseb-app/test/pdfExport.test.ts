@@ -23,3 +23,21 @@ test('gera um PDF válido com texto em português e conteúdo paginado', async (
     await parser.destroy();
   }
 });
+
+test('converte tags <br> sem exibir HTML literal nem colar palavras no PDF', async () => {
+  const pdf = generatePdf(
+    'Avaliação',
+    '• **Planejamento Reverso:** atividade.<br>• **Métodos Diversificados:** observação.\n| Etapa | Item A<br>Item B |',
+  );
+
+  const parser = new PDFParse({ data: new Uint8Array(pdf) });
+  try {
+    const parsed = await parser.getText();
+    assert.ok(!parsed.text.includes('<br>'));
+    assert.ok(parsed.text.includes('atividade.'));
+    assert.ok(parsed.text.includes('Métodos Diversificados:'));
+    assert.ok(parsed.text.includes('Item A Item B'));
+  } finally {
+    await parser.destroy();
+  }
+});
