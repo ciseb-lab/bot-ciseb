@@ -184,10 +184,68 @@
   transform: translate(-4px, -4px);
 }
 
+.pdf-print-sheet .katex-display {
+  border-color: rgba(0, 91, 172, 0.16) !important;
+  background-color: rgba(0, 91, 172, 0.04) !important;
+}
+
+.pdf-print-sheet thead {
+  background-color: rgba(224, 242, 254, 0.75) !important;
+  color: #0f172a !important;
+}
+
+.pdf-print-sheet th,
+.pdf-print-sheet td,
+.pdf-print-sheet hr {
+  border-color: #cbd5e1 !important;
+}
+
 @media print {
   @page {
     size: A4;
-    margin: 12mm 14mm 14mm 14mm;
+    margin: 16mm 14mm 16mm 14mm;
+
+    @top-left {
+      content: "CISEB · DINOV · SEDUC-PA";
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      font-size: 8pt;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    @top-right {
+      content: "Material Pedagógico · MIRI";
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      font-size: 8pt;
+      color: #64748b;
+    }
+
+    @bottom-left {
+      content: "Rede Estadual de Ensino do Pará · SEDUC";
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      font-size: 8pt;
+      color: #94a3b8;
+    }
+
+    @bottom-right {
+      content: "Página " counter(page) " de " counter(pages);
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      font-size: 8pt;
+      font-weight: 600;
+      color: #005BAC;
+    }
+  }
+
+  @page :first {
+    margin-top: 10mm;
+
+    @top-left {
+      content: none;
+    }
+
+    @top-right {
+      content: none;
+    }
   }
 
   body.pdf-print-active {
@@ -211,27 +269,54 @@
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   body.pdf-print-active .pdf-print-sheet > div:last-child {
-    padding: 12px 0 0 0 !important;
+    padding: 10px 0 0 0 !important;
+  }
+
+  body.pdf-print-active .pdf-print-sheet p {
+    orphans: 3;
+    widows: 3;
   }
 
   body.pdf-print-active .pdf-print-sheet h1,
   body.pdf-print-active .pdf-print-sheet h2,
-  body.pdf-print-active .pdf-print-sheet h3 {
+  body.pdf-print-active .pdf-print-sheet h3,
+  body.pdf-print-active .pdf-print-sheet hr {
     break-after: avoid;
     page-break-after: avoid;
   }
 
+  body.pdf-print-active .pdf-print-sheet p:has(+ ul),
+  body.pdf-print-active .pdf-print-sheet p:has(+ ol) {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  body.pdf-print-active .pdf-print-sheet li,
   body.pdf-print-active .pdf-print-sheet .katex-display,
   body.pdf-print-active .pdf-print-sheet table,
+  body.pdf-print-active .pdf-print-sheet tr,
   body.pdf-print-active .pdf-print-sheet blockquote,
   body.pdf-print-active .pdf-print-sheet .pdf-keep-together {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  body.pdf-print-active .pdf-print-sheet .katex-display {
+    margin: 0.6rem 0 !important;
+    padding: 0.55rem 0.75rem !important;
+    overflow: visible !important;
+  }
+
+  body.pdf-print-active .pdf-print-sheet .katex-display > .katex {
+    font-size: 1.12em !important;
   }
 
   body:not(.pdf-print-active) header,
