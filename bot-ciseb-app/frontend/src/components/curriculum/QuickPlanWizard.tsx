@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Compass,
+  FileText,
   Info,
   Layers,
   MapPin,
@@ -181,22 +182,69 @@ const RESOURCE_OPTIONS = [
   {
     label: '100% Desplugada / Sucata',
     value: '100% Desplugada / Sucata',
+    docs: [
+      'BNCC Computação (MEC)',
+      'Referencial Curricular de Computação do Pará',
+    ],
   },
   {
     label: 'Laboratório Maker / Robótica',
     value: 'Laboratório Maker / Robótica',
+    docs: [
+      'Referencial Curricular de Computação do Pará',
+      'Decreto nº 9.204 (Educação Conectada)',
+      'Guia de Adoção de Dispositivos',
+    ],
   },
   {
     label: 'Sala de Informática',
     value: 'Sala de Informática',
+    docs: [
+      'Guia de Adoção de Dispositivos',
+      'Matriz de Saberes Digitais Docentes',
+      'Decreto nº 9.204 (Educação Conectada)',
+    ],
   },
   {
     label: 'Celulares dos estudantes',
     value: 'Celulares dos estudantes',
+    docs: [
+      'Guia de Adoção de Dispositivos',
+      'Matriz de Saberes Digitais Docentes',
+      'Referencial Curricular de Computação do Pará',
+    ],
   },
   {
     label: 'Aula de Campo / Território',
     value: 'Aula de Campo / Território',
+    docs: [
+      'Coerência Pedagógica',
+      'Diretrizes Curriculares Nacionais (DCNs)',
+      'Referencial Curricular de Computação do Pará',
+    ],
+  },
+];
+
+const CONTEXT_KEYWORD_DOCUMENTS: Array<{ pattern: RegExp; docs: string[] }> = [
+  {
+    pattern: /ribeirinh|campo|igarap|amazon|florest|comunidade|territor|local|saberes/i,
+    docs: ['Referencial Curricular de Computação do Pará', 'Diretrizes Curriculares Nacionais (DCNs)'],
+  },
+  {
+    pattern: /ativa|metodolog|avalia|aprendizagem|turma|aluno|estudante|engajamento|coerencia/i,
+    docs: ['Coerência Pedagógica', 'Base Nacional Comum Curricular (BNCC)'],
+  },
+  {
+    pattern: /tecnolog|internet|conect|dispositiv|celular|computador|rede|offline|desplugad|recurso/i,
+    docs: ['Guia de Adoção de Dispositivos', 'Decreto nº 9.204 (Educação Conectada)', 'BNCC Computação (MEC)'],
+  },
+  {
+    pattern: /docente|professor|forma[cç][aã]o|planejamento|digital/i,
+    docs: ['Matriz de Saberes Digitais Docentes'],
+  },
+  {
+    pattern: /aula|semanal|semanais|carga|hor[aá]ri|eja|ind[ií]gena|quilombola|multisseriad/i,
+    docs: ['LDB — Lei nº 9.394/1996', 'Diretrizes Curriculares Nacionais (DCNs)'],
   },
 ];
 
@@ -316,6 +364,28 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
     () => SPECIFIC_MODALITIES.filter(modality => selectedModalities.includes(modality.id)),
     [selectedModalities],
   );
+
+  const block4MatchedDocuments = useMemo(() => {
+    const docs = new Set<string>();
+    for (const option of RESOURCE_OPTIONS) {
+      if (selectedResources.includes(option.value)) {
+        for (const doc of option.docs) docs.add(doc);
+      }
+    }
+    const trimmedContext = schoolContext.trim();
+    if (trimmedContext.length >= 3) {
+      for (const rule of CONTEXT_KEYWORD_DOCUMENTS) {
+        if (rule.pattern.test(trimmedContext)) {
+          for (const doc of rule.docs) docs.add(doc);
+        }
+      }
+      if (docs.size === 0) {
+        docs.add('Coerência Pedagógica');
+        docs.add('Referencial Curricular de Computação do Pará');
+      }
+    }
+    return [...docs];
+  }, [schoolContext, selectedResources]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -924,6 +994,25 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#00AAFF]"
                   />
                 </div>
+
+                {block4MatchedDocuments.length > 0 && (
+                  <div className="rounded-xl border border-[#005BAC]/20 bg-[#E0F2FE]/45 p-3 dark:border-[#00AAFF]/25 dark:bg-[#005BAC]/20">
+                    <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#005BAC] dark:text-[#9bdcff]">
+                      <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span>Documentos anexados no sistema que serão consultados por este bloco:</span>
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {block4MatchedDocuments.map(docTitle => (
+                        <span
+                          key={docTitle}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#005BAC]/20 bg-white px-2.5 py-1 text-[11px] font-medium text-[#005BAC] dark:border-[#00AAFF]/30 dark:bg-slate-900 dark:text-[#9bdcff]"
+                        >
+                          {docTitle}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>

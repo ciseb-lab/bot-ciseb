@@ -169,6 +169,104 @@ function sanitizeHistory(value: unknown): ChatHistoryEntry[] {
     .map(item => ({ role: item.role as 'user' | 'assistant', content: item.content.slice(-securityLimits.historyMaxChars) }));
 }
 
+const RESOURCE_DOCUMENT_TARGETS: Record<string, { query: string; preferredSources: string[] }> = {
+  '100% Desplugada / Sucata': {
+    query: 'computacao desplugada materiais concretos sucata reciclaveis atividades sem computador',
+    preferredSources: [
+      'BNCCComputaoCompletodiagramado.pdf',
+      'ReferencialCurriculardeComputacaoodoEstadodoPara.pdf',
+    ],
+  },
+  'Laboratório Maker / Robótica': {
+    query: 'laboratorio maker robotica prototipagem cultura maker dispositivos inovacao',
+    preferredSources: [
+      'ReferencialCurriculardeComputacaoodoEstadodoPara.pdf',
+      'D9204.pdf',
+      'GUIA-PARA-O-PLANEJAMENTO-DA-ADOCAO-DE-DISPOSITIVOS.pdf',
+    ],
+  },
+  'Sala de Informática': {
+    query: 'sala de informatica computadores laboratorio dispositivos conectividade planejamento',
+    preferredSources: [
+      'GUIA-PARA-O-PLANEJAMENTO-DA-ADOCAO-DE-DISPOSITIVOS.pdf',
+      'MatrizdeSaberesDigitaisDocentes.pdf',
+      'D9204.pdf',
+    ],
+  },
+  'Celulares dos estudantes': {
+    query: 'celulares smartphones dispositivos moveis estudantes conectividade adocao de dispositivos',
+    preferredSources: [
+      'GUIA-PARA-O-PLANEJAMENTO-DA-ADOCAO-DE-DISPOSITIVOS.pdf',
+      'MatrizdeSaberesDigitaisDocentes.pdf',
+      'ReferencialCurriculardeComputacaoodoEstadodoPara.pdf',
+    ],
+  },
+  'Aula de Campo / Território': {
+    query: 'aula de campo territorio investigacao comunidade vivencia saberes locais',
+    preferredSources: [
+      'Coerencia Pedagogica - Documento Completo-c8a91.pdf',
+      'd_c_n_educacao_basica_nova.pdf',
+      'ReferencialCurriculardeComputacaoodoEstadodoPara.pdf',
+    ],
+  },
+};
+
+export function buildBlock4RetrievalQuery(planning?: StructuredPlanningInput): string {
+  if (!planning) return '';
+  const resourceExpansions = planning.recursos_escola.map(
+    resource => `${resource} ${RESOURCE_DOCUMENT_TARGETS[resource]?.query || ''}`,
+  );
+  return [
+    ...resourceExpansions,
+    planning.contexto_escolar,
+    ...planning.modalidades,
+    planning.detalhes_modalidade || '',
+  ]
+    .map(item => item.trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
+export function retrieveBlock4Documents(
+  chunks: DocumentIndex['chunks'],
+  planning?: StructuredPlanningInput,
+  limit = 4,
+): ReturnType<typeof searchDocumentIndex> {
+  if (!planning) return [];
+  const results: ReturnType<typeof searchDocumentIndex> = [];
+  const seenKeys = new Set<string>();
+
+  const pushUnique = (items: ReturnType<typeof searchDocumentIndex>) => {
+    for (const item of items) {
+      const key = `${item.source}:${item.pageNumber || ''}:${item.text}`;
+      if (!seenKeys.has(key) && results.length < limit) {
+        seenKeys.add(key);
+        results.push(item);
+      }
+    }
+  };
+
+  for (const resource of planning.recursos_escola) {
+    const target = RESOURCE_DOCUMENT_TARGETS[resource];
+    const query = target ? `${resource} ${target.query}` : resource;
+    const filteredChunks = target
+      ? chunks.filter(chunk => target.preferredSources.includes(chunk.source))
+      : chunks;
+    pushUnique(searchDocumentIndex(filteredChunks.length > 0 ? filteredChunks : chunks, query, 2));
+  }
+
+  if (planning.contexto_escolar.trim()) {
+    pushUnique(searchDocumentIndex(chunks, planning.contexto_escolar, 2));
+  }
+
+  const combinedQuery = buildBlock4RetrievalQuery(planning);
+  if (combinedQuery && results.length < limit) {
+    pushUnique(searchDocumentIndex(chunks, combinedQuery, limit));
+  }
+
+  return results;
+}
+
 function findCandidateSkills(
   message: string,
   documents: DocumentIndex,
@@ -185,6 +283,8 @@ function findCandidateSkills(
         ...planning.etapa_ensino,
         ...planning.anos_series,
         ...planning.modalidades,
+        ...planning.recursos_escola,
+        planning.contexto_escolar,
       ].join(' ')
     : message;
   const normalizedQuery = normalizeForMatching(combinedInput);
@@ -300,6 +400,7 @@ function buildEvidencePrompt(
   documents: ReturnType<typeof searchDocumentIndex>,
   skills: Array<VerifiedCurriculumSkill & { score: number }>,
   planning?: StructuredPlanningInput,
+  block4Documents: ReturnType<typeof searchDocumentIndex> = [],
 ): string {
   const sections: string[] = [message];
   if (planning) {
@@ -309,6 +410,11 @@ function buildEvidencePrompt(
   if (documents.length > 0) {
     evidence.push(`TRECHOS DOS DOCUMENTOS DISPONÍVEIS (use somente se forem pertinentes):\n${documents
       .map((document, index) => `[${index + 1}] ${document.title}${document.pageNumber ? `, PDF p. ${document.pageNumber}` : ''}\n${document.text}`)
+      .join('\n\n')}`);
+  }
+  if (block4Documents.length > 0) {
+    evidence.push(`TRECHOS DOS DOCUMENTOS ANEXADOS PARA O BLOCO 4 — INFRAESTRUTURA, RECURSOS E CONTEXTO ESCOLAR (fundamente as escolhas metodológicas, o uso dos recursos marcados e a adaptação territorial nestas evidências e cite documento e página):\n${block4Documents
+      .map((document, index) => `[B4-${index + 1}] ${document.title}${document.pageNumber ? `, PDF p. ${document.pageNumber}` : ''}\n${document.text}`)
       .join('\n\n')}`);
   }
   if (skills.length > 0) {
@@ -489,7 +595,6 @@ app.post(
 
     const retrievalQuery = [
       ...history.filter(item => item.role === 'user').slice(-2).map(item => item.content),
-      message,
       ...(planning
         ? [
             ...planning.area_conhecimento,
@@ -499,11 +604,21 @@ app.post(
             ...planning.etapa_ensino,
             ...planning.anos_series,
             ...planning.modalidades,
+            ...planning.recursos_escola,
+            planning.contexto_escolar,
           ]
-        : []),
+        : [message]),
     ].join('\n');
     const relevantDocuments = searchDocumentIndex(documentIndex.chunks, retrievalQuery, 4);
-    const groundedDocuments = [...new Map(relevantDocuments.map(document => [
+    const rawBlock4Documents = retrieveBlock4Documents(documentIndex.chunks, planning, 4);
+    const primaryChunkKeys = new Set(
+      relevantDocuments.map(doc => `${doc.source}:${doc.pageNumber || ''}:${doc.text}`),
+    );
+    const block4Documents = rawBlock4Documents.filter(
+      doc => !primaryChunkKeys.has(`${doc.source}:${doc.pageNumber || ''}:${doc.text}`),
+    );
+    const allRetrievedDocuments = [...relevantDocuments, ...block4Documents];
+    const groundedDocuments = [...new Map(allRetrievedDocuments.map(document => [
       `${document.source}:${document.pageNumber || ''}`,
       { source: document.source, title: document.title, pageNumber: document.pageNumber },
     ])).values()];
@@ -529,7 +644,13 @@ app.post(
         });
       }
     }
-    const promptMessage = buildEvidencePrompt(message, relevantDocuments, candidateSkills, planning);
+    const promptMessage = buildEvidencePrompt(
+      message,
+      relevantDocuments,
+      candidateSkills,
+      planning,
+      block4Documents,
+    );
 
     if (ai) {
       // Build conversation turns for Gemini
