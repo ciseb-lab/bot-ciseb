@@ -16,7 +16,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onReset
           <span className="opacity-60">·</span>
           <span>Secretaria de Estado de Educação (SEDUC)</span>
           <span className="opacity-60 hidden md:inline">·</span>
-          <span className="hidden md:inline">Diretoria de Inovação e Sustentabilidade da Educação Básica (DINOV)</span>
+          <span className="hidden md:inline">Diretoria de Inovação (DINOV) · CISEB</span>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-[#00AAFF]">
           <span className="w-2 h-2 rounded-full bg-[#059669]"></span>

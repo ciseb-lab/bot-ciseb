@@ -55,7 +55,8 @@ const InstitutionalDocumentSheet: React.FC<InstitutionalDocumentSheetProps> = ({
         <div className="text-left text-[11px] leading-snug text-slate-600 sm:text-right">
           <div className="font-bold tracking-wide text-slate-900">GOVERNO DO ESTADO DO PARÁ</div>
           <div>Secretaria de Estado de Educação — SEDUC</div>
-          <div>Diretoria de Inovação e Sustentabilidade (DINOV · CISEB)</div>
+          <div>Diretoria de Inovação — DINOV</div>
+          <div>Centro de Inovação e Sustentabilidade da Educação Básica — CISEB</div>
           <div className="mt-1 font-medium text-[#005BAC]">Emitido em {emissionDate}</div>
         </div>
       </header>

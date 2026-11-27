@@ -30,7 +30,7 @@ const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const PAGE_MARGIN = 48;
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
-const FIRST_PAGE_TOP = PAGE_HEIGHT - 166;
+const FIRST_PAGE_TOP = PAGE_HEIGHT - 178;
 const CONTINUATION_PAGE_TOP = PAGE_HEIGHT - 68;
 const CONTENT_BOTTOM = 56;
 
@@ -519,17 +519,18 @@ function makePageStream(
     parts.push(Buffer.from(`${rgbFill(COLOR_CISEB_CYAN)} ${(PAGE_WIDTH * 0.68).toFixed(2)} ${(PAGE_HEIGHT - 8).toFixed(2)} ${(PAGE_WIDTH * 0.32).toFixed(2)} 8 re f\n`));
 
     // Cabeçalho institucional
-    appendText(parts, 'F2', 10.5, PAGE_MARGIN, PAGE_HEIGHT - 34, 'GOVERNO DO ESTADO DO PARÁ', COLOR_CISEB_DEEP);
-    appendText(parts, 'F1', 8.5, PAGE_MARGIN, PAGE_HEIGHT - 46, 'Secretaria de Estado de Educação (SEDUC) · DINOV · CISEB', COLOR_TEXT_MUTED);
-    appendText(parts, 'F2', 8.5, PAGE_WIDTH - PAGE_MARGIN - 128, PAGE_HEIGHT - 34, 'MIRI · Material Pedagógico', COLOR_CISEB_BLUE);
-    appendText(parts, 'F1', 8.2, PAGE_WIDTH - PAGE_MARGIN - 128, PAGE_HEIGHT - 46, `Emitido em ${emissionDate}`, COLOR_TEXT_MUTED);
+    appendText(parts, 'F2', 10.2, PAGE_MARGIN, PAGE_HEIGHT - 30, 'GOVERNO DO ESTADO DO PARÁ', COLOR_CISEB_DEEP);
+    appendText(parts, 'F1', 8.2, PAGE_MARGIN, PAGE_HEIGHT - 41, 'Secretaria de Estado de Educação — SEDUC · Diretoria de Inovação — DINOV', COLOR_TEXT_MUTED);
+    appendText(parts, 'F1', 8.2, PAGE_MARGIN, PAGE_HEIGHT - 52, 'Centro de Inovação e Sustentabilidade da Educação Básica — CISEB', COLOR_TEXT_MUTED);
+    appendText(parts, 'F2', 8.5, PAGE_WIDTH - PAGE_MARGIN - 128, PAGE_HEIGHT - 30, 'MIRI · Material Pedagógico', COLOR_CISEB_BLUE);
+    appendText(parts, 'F1', 8.2, PAGE_WIDTH - PAGE_MARGIN - 128, PAGE_HEIGHT - 41, `Emitido em ${emissionDate}`, COLOR_TEXT_MUTED);
 
     // Linha divisória do cabeçalho
-    parts.push(Buffer.from(`${rgbStroke(COLOR_CISEB_BLUE)} 1.2 w ${PAGE_MARGIN} ${(PAGE_HEIGHT - 56).toFixed(2)} m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} ${(PAGE_HEIGHT - 56).toFixed(2)} l S\n`));
+    parts.push(Buffer.from(`${rgbStroke(COLOR_CISEB_BLUE)} 1.2 w ${PAGE_MARGIN} ${(PAGE_HEIGHT - 64).toFixed(2)} m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} ${(PAGE_HEIGHT - 64).toFixed(2)} l S\n`));
 
     // Cartão de título do documento
-    const cardBottom = PAGE_HEIGHT - 142;
-    const cardHeight = 74;
+    const cardBottom = PAGE_HEIGHT - 152;
+    const cardHeight = 76;
     parts.push(Buffer.from(`${rgbFill(COLOR_SOFT_TINT)} ${PAGE_MARGIN} ${cardBottom.toFixed(2)} ${CONTENT_WIDTH.toFixed(2)} ${cardHeight} re f\n`));
     parts.push(Buffer.from(`${rgbFill(COLOR_CISEB_BLUE)} ${PAGE_MARGIN} ${cardBottom.toFixed(2)} 4 ${cardHeight} re f\n`));
     parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.6 w ${PAGE_MARGIN} ${cardBottom.toFixed(2)} ${CONTENT_WIDTH.toFixed(2)} ${cardHeight} re S\n`));

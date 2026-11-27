@@ -65,8 +65,9 @@ export const OfficialPrintView: React.FC<OfficialPrintViewProps> = ({ content, o
             </div>
             <div className="text-right text-xs text-slate-600 leading-tight">
               <div className="font-bold text-slate-900">GOVERNO DO ESTADO DO PARÁ</div>
-              <div>Secretaria de Estado de Educação - SEDUC</div>
-              <div>Diretoria de Inovação e Sustentabilidade da Educação Básica - DINOV</div>
+              <div>Secretaria de Estado de Educação — SEDUC</div>
+              <div>Diretoria de Inovação — DINOV</div>
+              <div>Centro de Inovação e Sustentabilidade da Educação Básica — CISEB</div>
               <div className="font-mono text-[10px] text-slate-400 mt-1">
                 Autenticação: {protocolId} · {printDate}
               </div>
