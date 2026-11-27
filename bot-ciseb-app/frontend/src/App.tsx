@@ -8,6 +8,7 @@ import { LoginScreen } from './components/auth/LoginScreen.tsx';
 import { Sidebar, ChatSession } from './components/chat/Sidebar.tsx';
 import type { GroundedDocumentReference, Message } from './components/chat/ChatView.tsx';
 import { CurriculumSkill } from '../../shared/curriculumData.ts';
+import type { StructuredPlanningInput } from '../../shared/planningSchema.ts';
 import { useModalFocus } from './hooks/useModalFocus.ts';
 import { LogoEditor } from './components/branding/LogoEditor.tsx';
 
@@ -340,7 +341,7 @@ function AuthenticatedApp({ user }: { user: User }) {
     });
   };
 
-  const handleSendMessage = async (text: string) => {
+  const handleSendMessage = async (text: string, planning?: StructuredPlanningInput) => {
     const trimmedText = text.trim();
     if (!trimmedText || isLoading) return;
 
@@ -371,6 +372,7 @@ function AuthenticatedApp({ user }: { user: User }) {
             role: message.role,
             content: message.content.slice(-1200),
           })),
+          ...(planning ? { planning } : {}),
         }),
       });
 
@@ -536,9 +538,9 @@ function AuthenticatedApp({ user }: { user: User }) {
               >
                 <X className="h-5 w-5" />
               </button>
-              <QuickPlanWizard onSubmitToChat={query => {
+              <QuickPlanWizard onSubmitToChat={(query, planning) => {
                 setIsPlanBuilderOpen(false);
-                void handleSendMessage(query);
+                void handleSendMessage(query, planning);
               }} />
             </div>
           </div>

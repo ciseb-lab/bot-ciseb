@@ -4,6 +4,7 @@ import { isIP } from 'node:net';
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminAppCheck, adminAuth, adminFirestore } from './firebaseAdmin.ts';
 import { isInstitutionalEmail } from '../shared/authPolicy.ts';
+import { isValidStructuredPlanningInput } from '../shared/planningSchema.ts';
 
 export interface AuthenticatedIdentity {
   uid: string;
@@ -87,6 +88,11 @@ export function validateChatPayload(req: Request, res: Response, next: NextFunct
       || !(['user', 'assistant'].includes(String(item.role)))
       || typeof item.content !== 'string'))) {
     res.status(400).json({ error: 'O contexto recente da conversa é inválido.' });
+    return;
+  }
+  const planning = req.body?.planning;
+  if (planning !== undefined && !isValidStructuredPlanningInput(planning)) {
+    res.status(400).json({ error: 'Os parâmetros estruturados do planejamento são inválidos.' });
     return;
   }
   next();

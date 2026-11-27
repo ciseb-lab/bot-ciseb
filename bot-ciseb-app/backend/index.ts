@@ -21,6 +21,8 @@ import type { DocumentIndex } from './documentKnowledge.ts';
 import { generatePdf } from './pdfExport.ts';
 import { securityLimits, rateLimit, limitConcurrentChats, requireAppCheck, requireInstitutionalIdentity, validateChatPayload, validatePdfPayload, validateCurriculumQuery, validateCurriculumCode } from './security.ts';
 import { isFirebaseAdminConfigured } from './firebaseAdmin.ts';
+import { isValidStructuredPlanningInput } from '../shared/planningSchema.ts';
+import type { PlanningDocumentFormat, StructuredPlanningInput } from '../shared/planningSchema.ts';
 
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT) || 3000;
@@ -167,21 +169,38 @@ function sanitizeHistory(value: unknown): ChatHistoryEntry[] {
     .map(item => ({ role: item.role as 'user' | 'assistant', content: item.content.slice(-securityLimits.historyMaxChars) }));
 }
 
-function findCandidateSkills(message: string, documents: DocumentIndex): Array<VerifiedCurriculumSkill & { score: number }> {
+function findCandidateSkills(
+  message: string,
+  documents: DocumentIndex,
+  planning?: StructuredPlanningInput,
+): Array<VerifiedCurriculumSkill & { score: number }> {
   type ScoredCandidate = { skill: CurriculumSkill; score: number; verification?: VerifiedCurriculumSkill };
-  const normalizedQuery = normalizeForMatching(message);
+  const combinedInput = planning
+    ? [
+        message,
+        ...planning.area_conhecimento,
+        ...planning.componentes_curriculares,
+        ...planning.trilhas_formativas,
+        planning.subtema,
+        ...planning.etapa_ensino,
+        ...planning.anos_series,
+        ...planning.modalidades,
+      ].join(' ')
+    : message;
+  const normalizedQuery = normalizeForMatching(combinedInput);
   const queryTokens = new Set(normalizedQuery.split(/\s+/).filter(token => token.length > 3));
-  const yearMatch = normalizedQuery.match(/\b(\d+)[oa]?\s*(?:ano|serie)\b/);
-  const requestedYear = yearMatch ? Number(yearMatch[1]) : null;
+  const yearMatches = [...normalizedQuery.matchAll(/\b(\d+)[oa]?\s*(?:ano|serie)\b/g)].map(match => Number(match[1]));
 
   return CURRICULUM_CATALOG_RECORDS.map(skill => {
     const normalizedStage = normalizeForMatching(skill.stage);
     const stageYears = skill.stage.match(/\d+/g)?.map(Number) || [];
     const isYearRange = /\bao\b/i.test(normalizedStage) && stageYears.length >= 2;
-    const stageMatchesYear = requestedYear !== null && stageYears.length > 0
-      && (isYearRange
-        ? requestedYear >= stageYears[0] && requestedYear <= stageYears[1]
-        : stageYears[0] === requestedYear);
+    const stageMatchesYear = yearMatches.length > 0 && stageYears.length > 0
+      && yearMatches.some(requestedYear => (
+        isYearRange
+          ? requestedYear >= stageYears[0] && requestedYear <= stageYears[1]
+          : stageYears[0] === requestedYear
+      ));
     const stageMatchesLevel = normalizedStage.includes('em')
       ? normalizedQuery.includes('ensino medio') || queryTokens.has('medio')
       : normalizedStage.includes('ef') && normalizedQuery.includes('ensino fundamental');
@@ -211,11 +230,81 @@ function findCandidateSkills(message: string, documents: DocumentIndex): Array<V
     .map(item => ({ ...item.verification, score: item.score }));
 }
 
+const FORMAT_ARCHITECTURES: Record<PlanningDocumentFormat, string> = {
+  'Plano de Aula': [
+    'ARQUITETURA OBRIGATÓRIA — PLANO DE AULA (1 a 2 aulas · 50 a 100 min):',
+    '1. Identificação e Objetivo de Aprendizagem Pontual.',
+    '2. Ancoragem Curricular (BNCC e DCEPA coerentes com o ano/série; cite código literal apenas se confirmado nas evidências).',
+    '3. Conteúdos / Objetos de Conhecimento e Conexão com a Trilha Formativa.',
+    '4. Metodologia e Desenvolvimento por Tempo Estimado (Acolhida/Problematização, Desenvolvimento Prático, Fechamento).',
+    '5. Recursos Necessários (restritos exclusivamente aos recursos selecionados pelo professor).',
+    '6. Mediação Docente, Adaptações ao Contexto Escolar e Avaliação Formativa.',
+  ].join('\n'),
+  'Sequência Didática': [
+    'ARQUITETURA OBRIGATÓRIA — SEQUÊNCIA DIDÁTICA (4 a 6 etapas progressivas):',
+    '1. Identificação, Ancoragem Curricular (BNCC/DCEPA) e Eixo Problematizador da Trilha Formativa.',
+    '2. Progressão Pedagógica em Etapas:',
+    '   - Etapa 1: Problematização e diagnóstico (mobilização de saberes prévios e leitura da realidade local/amazônica).',
+    '   - Etapa 2: Investigação e curadoria de informações.',
+    '   - Etapa 3: Desenvolvimento prático e mão na massa (usando exclusivamente os recursos marcados na escola).',
+    '   - Etapa 4: Sistematização das aprendizagens.',
+    '   - Etapa 5: Socialização dos resultados com a turma/comunidade.',
+    '   - Etapa 6 (ou integrada): Avaliação formativa e reflexão crítica.',
+  ].join('\n'),
+  'Projeto Integrador / Maker': [
+    'ARQUITETURA OBRIGATÓRIA — PROJETO INTEGRADOR / MAKER (Ciclo completo):',
+    '1. Identificação Interdisciplinar, Ancoragem Curricular (BNCC/DCEPA) e Conexão Territorial.',
+    '2. Fases do Ciclo Maker:',
+    '   - Fase 1: Identificação de um problema real do contexto escolar ou territorial.',
+    '   - Fase 2: Pesquisa, investigação e diálogo com saberes locais.',
+    '   - Fase 3: Planejamento e ideação da solução.',
+    '   - Fase 4: Criação e prototipagem (utilizando estritamente a infraestrutura marcada pelo professor).',
+    '   - Fase 5: Testes, validação e ajustes do protótipo/solução.',
+    '   - Fase 6: Apresentação/culminância e avaliação processual.',
+  ].join('\n'),
+  'Explorar Ideia': [
+    'ARQUITETURA OBRIGATÓRIA — EXPLORAR IDEIA (Fluxo conversacional orientado):',
+    '- NÃO gere um documento fechado/definitivo agora.',
+    '- Acolha os parâmetros informados e apresente 2 a 3 caminhos pedagógicos concretos e criativos conectados à trilha formativa, aos recursos selecionados e à realidade amazônica/paraense.',
+    '- Sugira possíveis conexões com a BNCC/DCEPA e finalize com 2 perguntas estratégicas para o professor escolher o caminho antes de gerar o documento final.',
+  ].join('\n'),
+};
+
+export function buildStructuredPlanningPrompt(planning: StructuredPlanningInput): string {
+  const resourcesRule = planning.recursos_escola.length > 0
+    ? `Utilize EXCLUSIVAMENTE estes recursos selecionados: ${planning.recursos_escola.join(', ')}. Não exija nem presuma internet, laboratório ou equipamentos fora desta lista.`
+    : 'Nenhum recurso específico foi fixado; proponha alternativas viáveis de baixo custo e pergunte se desejar detalhar a infraestrutura.';
+
+  return [
+    '--- PARÂMETROS ESTRUTURADOS DO ROTEIRO GUIADO ---',
+    `area_conhecimento: ${planning.area_conhecimento.join(', ') || 'Não informado'}`,
+    `componentes_curriculares: ${planning.componentes_curriculares.join(', ') || 'Não informado'}`,
+    `trilhas_formativas: ${planning.trilhas_formativas.join('; ') || 'Não informado'}`,
+    `subtema: ${planning.subtema || 'Não informado'}`,
+    `etapa_ensino: ${planning.etapa_ensino.join(', ') || 'Não informado'}`,
+    `anos_series: ${planning.anos_series.join(', ') || 'Não informado'}`,
+    `modalidades: ${planning.modalidades.join(', ') || 'Regular / Não especificada'}`,
+    ...(planning.detalhes_modalidade ? [`detalhes_modalidade: ${planning.detalhes_modalidade}`] : []),
+    `formato_documento: ${planning.formato_documento}`,
+    `recursos_escola: ${planning.recursos_escola.join(', ') || 'Não informado'}`,
+    `contexto_escolar: ${planning.contexto_escolar || 'Não informado'}`,
+    '',
+    FORMAT_ARCHITECTURES[planning.formato_documento],
+    `REGRA DE INFRAESTRUTURA: ${resourcesRule}`,
+    '--- FIM DOS PARÂMETROS ESTRUTURADOS ---',
+  ].join('\n');
+}
+
 function buildEvidencePrompt(
   message: string,
   documents: ReturnType<typeof searchDocumentIndex>,
   skills: Array<VerifiedCurriculumSkill & { score: number }>,
+  planning?: StructuredPlanningInput,
 ): string {
+  const sections: string[] = [message];
+  if (planning) {
+    sections.push(buildStructuredPlanningPrompt(planning));
+  }
   const evidence: string[] = [];
   if (documents.length > 0) {
     evidence.push(`TRECHOS DOS DOCUMENTOS DISPONÍVEIS (use somente se forem pertinentes):\n${documents
@@ -227,9 +316,10 @@ function buildEvidencePrompt(
       .map(({ skill, document }) => `${skill.code} | ${skill.verbatimText} | ${document.title}${document.pageNumber ? `, PDF p. ${document.pageNumber}` : ''}`)
       .join('\n')}`);
   }
-  return evidence.length > 0
-    ? `${message}\n\n--- EVIDÊNCIAS DE CONSULTA ---\n${evidence.join('\n\n')}\n--- FIM DAS EVIDÊNCIAS ---`
-    : message;
+  if (evidence.length > 0) {
+    sections.push(`--- EVIDÊNCIAS DE CONSULTA ---\n${evidence.join('\n\n')}\n--- FIM DAS EVIDÊNCIAS ---`);
+  }
+  return sections.join('\n\n');
 }
 
 const BOT_CISEB_SYSTEM_PROMPT = `
@@ -394,6 +484,9 @@ app.post(
   try {
     const message = (req.body.message as string).trim();
     const history = sanitizeHistory(req.body?.history);
+    const planning = isValidStructuredPlanningInput(req.body?.planning)
+      ? req.body.planning
+      : undefined;
 
     if (!documentIndex) {
       return res.status(503).json({ error: 'A base documental ainda não está disponível.' });
@@ -402,6 +495,17 @@ app.post(
     const retrievalQuery = [
       ...history.filter(item => item.role === 'user').slice(-2).map(item => item.content),
       message,
+      ...(planning
+        ? [
+            ...planning.area_conhecimento,
+            ...planning.componentes_curriculares,
+            ...planning.trilhas_formativas,
+            planning.subtema,
+            ...planning.etapa_ensino,
+            ...planning.anos_series,
+            ...planning.modalidades,
+          ]
+        : []),
     ].join('\n');
     const relevantDocuments = searchDocumentIndex(documentIndex.chunks, retrievalQuery, 4);
     const groundedDocuments = [...new Map(relevantDocuments.map(document => [
@@ -420,7 +524,7 @@ app.post(
       });
     }
 
-    const candidateSkills = findCandidateSkills(message, documentIndex);
+    const candidateSkills = findCandidateSkills(message, documentIndex, planning);
     for (const candidate of candidateSkills) {
       if (!groundedDocuments.some(document => document.source === candidate.document.source && document.pageNumber === candidate.document.pageNumber)) {
         groundedDocuments.push({
@@ -430,7 +534,7 @@ app.post(
         });
       }
     }
-    const promptMessage = buildEvidencePrompt(message, relevantDocuments, candidateSkills);
+    const promptMessage = buildEvidencePrompt(message, relevantDocuments, candidateSkills, planning);
 
     if (ai) {
       // Build conversation turns for Gemini

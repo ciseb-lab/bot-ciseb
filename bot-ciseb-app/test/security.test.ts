@@ -88,6 +88,34 @@ describe('Validação de requisições e limites', () => {
     const valid = invokeValidator(validateChatPayload, { message: '  pergunta válida  ' });
     assert.equal(valid.result.statusCode, 200);
     assert.equal(valid.continued, true);
+
+    const validPlanning = invokeValidator(validateChatPayload, {
+      message: 'Proposta estruturada',
+      planning: {
+        area_conhecimento: ['Ciências da Natureza', 'Computação / Inovação (CISEB)'],
+        componentes_curriculares: ['Ciências', 'Computação'],
+        trilhas_formativas: ['Clima e Mudanças Climáticas'],
+        subtema: 'Igarapés e sensores',
+        etapa_ensino: ['Ensino Fundamental II (Anos Finais)'],
+        anos_series: ['6º ano (EF II)'],
+        modalidades: ['Educação Escolar Ribeirinha'],
+        formato_documento: 'Sequência Didática',
+        recursos_escola: ['100% Desplugada / Sucata e Materiais Reutilizáveis'],
+        contexto_escolar: 'Escola ribeirinha com 35 estudantes.',
+      },
+    });
+    assert.equal(validPlanning.result.statusCode, 200);
+    assert.equal(validPlanning.continued, true);
+
+    const invalidPlanning = invokeValidator(validateChatPayload, {
+      message: 'Proposta inválida',
+      planning: {
+        area_conhecimento: 'não é array',
+        formato_documento: 'Formato Inexistente',
+      },
+    });
+    assert.equal(invalidPlanning.result.statusCode, 400);
+    assert.equal(invalidPlanning.continued, false);
   });
 
   test('rejeita material PDF ausente ou acima do limite antes de contabilizar uso', () => {
