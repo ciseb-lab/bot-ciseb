@@ -527,7 +527,7 @@ function AuthenticatedApp({ user }: { user: User }) {
       {isPlanBuilderOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <div ref={planBuilderDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-xs sm:p-6" role="dialog" aria-modal="true" aria-label="Estruturar uma proposta">
-            <div className="relative my-auto w-full max-w-2xl">
+            <div className="relative my-auto w-full max-w-3xl">
               <button
                 type="button"
                 onClick={() => setIsPlanBuilderOpen(false)}
