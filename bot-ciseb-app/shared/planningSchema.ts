@@ -54,7 +54,7 @@ export function isValidStructuredPlanningInput(value: unknown): value is Structu
   ) {
     return false;
   }
-  if (!isBoundedStringArray(candidate.recursos_escola, 10, 120)) return false;
+  if (!isBoundedStringArray(candidate.recursos_escola, 30, 120)) return false;
   if (typeof candidate.contexto_escolar !== 'string' || candidate.contexto_escolar.length > 1000) return false;
 
   return true;

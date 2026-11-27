@@ -177,26 +177,46 @@ const FORMAT_OPTIONS: Array<{
   },
 ];
 
-const RESOURCE_OPTIONS = [
+const RESOURCE_GROUPS: Array<{
+  groupLabel: string;
+  options: Array<{ label: string; value: string }>;
+}> = [
   {
-    label: '100% Desplugada / Sucata',
-    value: '100% Desplugada / Sucata',
+    groupLabel: 'Tecnologia, Conectividade e Maker',
+    options: [
+      { label: '100% Desplugada / Sucata', value: '100% Desplugada / Sucata' },
+      { label: 'Laboratório Maker / Robótica', value: 'Laboratório Maker / Robótica' },
+      { label: 'Sala de Informática', value: 'Sala de Informática' },
+      { label: 'Chromebooks / Tablets da escola', value: 'Chromebooks / Tablets da escola' },
+      { label: 'Celulares dos estudantes', value: 'Celulares dos estudantes' },
+      { label: 'Projetor / TV / Caixa de som', value: 'Projetor / TV / Caixa de som' },
+      { label: 'Internet limitada / Uso offline', value: 'Internet limitada / Uso offline' },
+    ],
   },
   {
-    label: 'Laboratório Maker / Robótica',
-    value: 'Laboratório Maker / Robótica',
+    groupLabel: 'Espaços e Materiais da Escola',
+    options: [
+      { label: 'Horta escolar / Área verde', value: 'Horta escolar / Área verde' },
+      { label: 'Biblioteca / Sala de leitura', value: 'Biblioteca / Sala de leitura' },
+      { label: 'Laboratório de Ciências', value: 'Laboratório de Ciências' },
+      { label: 'Quadra / Pátio escolar', value: 'Quadra / Pátio escolar' },
+      { label: 'Jogos pedagógicos / Impressos', value: 'Jogos pedagógicos / Impressos' },
+      { label: 'Materiais recicláveis e da região', value: 'Materiais recicláveis e da região' },
+    ],
   },
   {
-    label: 'Sala de Informática',
-    value: 'Sala de Informática',
-  },
-  {
-    label: 'Celulares dos estudantes',
-    value: 'Celulares dos estudantes',
-  },
-  {
-    label: 'Aula de Campo / Território',
-    value: 'Aula de Campo / Território',
+    groupLabel: 'Território e Potencialidades Locais',
+    options: [
+      { label: 'Aula de Campo / Território', value: 'Aula de Campo / Território' },
+      { label: 'Escola Urbana / Periférica', value: 'Escola Urbana / Periférica' },
+      { label: 'Escola Ribeirinha / Várzea', value: 'Escola Ribeirinha / Várzea' },
+      { label: 'Escola do Campo / Agricultura Familiar', value: 'Escola do Campo / Agricultura Familiar' },
+      { label: 'Território Indígena', value: 'Território Indígena' },
+      { label: 'Território Quilombola', value: 'Território Quilombola' },
+      { label: 'Rios, Igarapés e Bacias Locais', value: 'Rios, Igarapés e Bacias Locais' },
+      { label: 'Floresta / Bioeconomia / Extrativismo', value: 'Floresta / Bioeconomia / Extrativismo' },
+      { label: 'Feira, Comércio ou Cooperativa Local', value: 'Feira, Comércio ou Cooperativa Local' },
+    ],
   },
 ];
 
@@ -878,7 +898,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                 <div>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      5. Recursos disponíveis na escola <span className="font-normal text-slate-400">· pílulas de múltipla escolha</span>
+                      5. Recursos disponíveis na escola e território <span className="font-normal text-slate-400">· pílulas de múltipla escolha</span>
                     </span>
                     {selectedResources.length > 0 && (
                       <button
@@ -886,28 +906,37 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                         onClick={() => setSelectedResources([])}
                         className="cursor-pointer text-[11px] font-medium text-[#005BAC] hover:underline dark:text-[#00AAFF]"
                       >
-                        Limpar
+                        Limpar ({selectedResources.length})
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {RESOURCE_OPTIONS.map(item => {
-                      const active = selectedResources.includes(item.value);
-                      return (
-                        <button
-                          key={item.value}
-                          type="button"
-                          onClick={() => setSelectedResources(prev => toggleMulti(prev, item.value))}
-                          className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition ${
-                            active
-                              ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
-                              : 'border border-slate-200 bg-white text-slate-600 hover:border-[#005BAC]/40 hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
+                  <div className="space-y-2.5 rounded-lg border border-slate-200/70 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                    {RESOURCE_GROUPS.map(group => (
+                      <div key={group.groupLabel}>
+                        <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          {group.groupLabel}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {group.options.map(item => {
+                            const active = selectedResources.includes(item.value);
+                            return (
+                              <button
+                                key={item.value}
+                                type="button"
+                                onClick={() => setSelectedResources(prev => toggleMulti(prev, item.value))}
+                                className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition ${
+                                  active
+                                    ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
+                                    : 'border border-slate-200 bg-slate-50/70 text-slate-600 hover:border-[#005BAC]/40 hover:bg-white hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
+                                }`}
+                              >
+                                {item.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
