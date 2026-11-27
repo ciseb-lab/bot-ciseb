@@ -89,21 +89,9 @@ const InstitutionalDocumentSheet: React.FC<InstitutionalDocumentSheetProps> = ({
         <MarkdownText>{content}</MarkdownText>
       </section>
 
-      {/* Rodapé institucional e campo de visto */}
-      <footer className="pdf-keep-together mt-8 border-t border-slate-200 pt-6">
-        <div className="grid grid-cols-1 gap-6 text-center text-xs text-slate-600 sm:grid-cols-2">
-          <div>
-            <div className="mx-auto mb-1.5 w-52 border-b border-slate-400" />
-            <div className="font-semibold text-slate-800">Docente / Formador(a) Responsável</div>
-            <div className="text-[11px] text-slate-400">Rede Estadual de Ensino do Pará</div>
-          </div>
-          <div>
-            <div className="mx-auto mb-1.5 w-52 border-b border-slate-400" />
-            <div className="font-semibold text-slate-800">Coordenação Pedagógica / CISEB</div>
-            <div className="text-[11px] text-slate-400">Visto e Acompanhamento Pedagógico</div>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-[10px] text-slate-400">
+      {/* Rodapé institucional */}
+      <footer className="pdf-keep-together mt-8 border-t border-slate-200 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
           <span>CISEB · DINOV · SEDUC-PA</span>
           <span>Documento estruturado com apoio do MIRI · {emissionDate}</span>
         </div>
