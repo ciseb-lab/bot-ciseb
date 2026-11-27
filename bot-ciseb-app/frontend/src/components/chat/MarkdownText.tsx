@@ -1,5 +1,17 @@
 import ReactMarkdown, { type Components } from 'react-markdown';
+import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import 'katex/dist/katex.min.css';
+import 'katex/contrib/mhchem';
+import { normalizeMarkdownForRendering, remarkHtmlBreaks } from './markdownUtils.ts';
+
+type MarkdownProps = Parameters<typeof ReactMarkdown>[0];
+
+const remarkPlugins: MarkdownProps['remarkPlugins'] = [remarkGfm, remarkMath, remarkHtmlBreaks];
+const rehypePlugins: MarkdownProps['rehypePlugins'] = [
+  [rehypeKatex, { throwOnError: false, strict: false }],
+];
 
 const components: Components = {
   p: ({ children }) => <p className="my-2 leading-relaxed first:mt-0 last:mb-0">{children}</p>,
@@ -38,10 +50,16 @@ interface MarkdownTextProps {
 }
 
 export function MarkdownText({ children, className = '' }: MarkdownTextProps) {
+  const normalizedContent = normalizeMarkdownForRendering(children);
+
   return (
     <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {children}
+      <ReactMarkdown
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
+        components={components}
+      >
+        {normalizedContent}
       </ReactMarkdown>
     </div>
   );

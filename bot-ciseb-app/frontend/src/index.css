@@ -89,6 +89,12 @@
   scrollbar-width: none;
 }
 
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+
 .font-display {
   font-family: var(--font-display);
 }
