@@ -152,22 +152,23 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
         </AnimatePresence>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100/90 px-1 pt-2 dark:border-slate-800">
-        <div className="flex items-center gap-2">
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100/90 px-1 pt-2 sm:gap-3 dark:border-slate-800">
+        <div className="flex min-w-0 items-center gap-2">
           {onAttach && (
             <button
               type="button"
               onClick={onAttach}
               disabled={isLoading}
-              aria-label="Anexar ou consultar fontes"
-              title="Consultar fontes e normativas"
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition hover:bg-[#E0F2FE]/70 hover:text-[#005BAC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Estruturar proposta passo a passo"
+              title="Estruturar proposta passo a passo"
+              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition hover:bg-[#E0F2FE]/70 hover:text-[#005BAC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#00AAFF]"
             >
               <Paperclip className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
-          <span className="text-[11px] text-slate-400">
-            Enter ou Ctrl + Enter envia · Shift + Enter quebra linha
+          <span className="truncate text-[11px] text-slate-400">
+            <span className="hidden sm:inline">Enter ou Ctrl + Enter envia · Shift + Enter quebra linha</span>
+            <span className="sm:hidden">Roteiro guiado ou envie sua pergunta</span>
           </span>
         </div>
 
@@ -177,7 +178,7 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
           whileHover={!value.trim() || isLoading ? undefined : { scale: 1.03 }}
           whileTap={!value.trim() || isLoading ? undefined : { scale: 0.96 }}
           aria-label="Enviar mensagem"
-          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-[#005BAC] text-white shadow-xs transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-[#005BAC] text-white shadow-xs transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600"
         >
           <ArrowUp className="h-4 w-4 stroke-[2.5]" aria-hidden="true" />
         </motion.button>

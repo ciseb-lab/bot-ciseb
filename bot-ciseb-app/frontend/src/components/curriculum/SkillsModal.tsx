@@ -33,46 +33,48 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({ isOpen, onClose, onSel
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[85vh] flex flex-col border border-slate-200 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-2 backdrop-blur-xs sm:p-4">
+      <div className="flex max-h-[88dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-[#005BAC]" />
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3.5 sm:items-center sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex min-w-0 items-center gap-2">
+            <BookOpen className="h-5 w-5 shrink-0 text-[#005BAC] dark:text-[#00AAFF]" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 Registros curriculares do catálogo local
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Registros para exploração; confirme a origem nos PDFs antes de citar como norma
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg cursor-pointer"
+            aria-label="Fechar registros curriculares"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Filters */}
-        <div className="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-2.5 border-b border-slate-200 bg-white p-3 sm:flex-row sm:gap-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar por código, tema (ex.: algoritmos, IA, ecossistemas)..."
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00AAFF]"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#00AAFF] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
           <select
             value={selectedComponent}
             onChange={e => setSelectedComponent(e.target.value)}
-            className="text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#00AAFF]"
+            className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#00AAFF] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
           >
             <option value="ALL">Todos os Componentes</option>
             <option value="Computação">Computação (MEC 2022)</option>
@@ -84,40 +86,42 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({ isOpen, onClose, onSel
         </div>
 
         {/* Skills List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 divide-y divide-slate-100">
+        <div className="flex-1 space-y-3 divide-y divide-slate-100 overflow-y-auto p-3 sm:p-4 dark:divide-slate-800">
           {filtered.map(skill => (
-            <div key={skill.code} className="pt-3 first:pt-0 flex flex-col justify-between">
-              <div className="flex items-start justify-between gap-3 mb-1.5">
-                <div>
-                  <span className="font-mono font-bold text-xs text-[#005BAC] bg-[#E0F2FE] px-2 py-0.5 rounded">
+            <div key={skill.code} className="flex flex-col justify-between pt-3 first:pt-0">
+              <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="rounded bg-[#E0F2FE] px-2 py-0.5 font-mono text-xs font-bold text-[#005BAC]">
                     {skill.code}
                   </span>
-                  <span className="text-xs text-slate-500 ml-2">
+                  <span className="ml-2 text-xs text-slate-500">
                     {skill.stage} · {skill.component} · {skill.axisOrThematicUnit}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <button
+                    type="button"
                     onClick={() => copySkill(skill.verbatimText, skill.code)}
-                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded cursor-pointer"
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     title="Copiar texto registrado localmente"
                   >
                     {copiedCode === skill.code ? (
-                      <Check className="w-3.5 h-3.5 text-[#059669]" />
+                      <Check className="h-3.5 w-3.5 text-[#059669]" />
                     ) : (
-                      <Copy className="w-3.5 h-3.5" />
+                      <Copy className="h-3.5 w-3.5" />
                     )}
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       onSelectSkill(skill);
                       onClose();
                     }}
-                    className="px-2.5 py-1 bg-[#005BAC] hover:bg-[#004E96] text-white text-xs font-semibold rounded-md flex items-center gap-1 cursor-pointer transition-colors"
+                    className="flex min-h-8 cursor-pointer items-center gap-1 rounded-md bg-[#005BAC] px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#004E96]"
                   >
                     <span>Inserir</span>
-                    <ArrowRight className="w-3 h-3" />
+                    <ArrowRight className="h-3 w-3" />
                   </button>
                 </div>
               </div>

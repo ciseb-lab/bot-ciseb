@@ -92,7 +92,7 @@ export function LoginScreen() {
   return (
     <main className="flex min-h-dvh w-full flex-col overflow-x-hidden bg-white text-slate-900 lg:flex-row">
       {/* Coluna esquerda: acesso institucional Firebase */}
-      <section className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:px-14">
+      <section className="flex flex-1 items-center justify-center px-4 py-8 xs:px-6 sm:px-10 sm:py-12 lg:px-14">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -100,7 +100,7 @@ export function LoginScreen() {
           className="w-full max-w-[560px]"
         >
           {!configured ? (
-            <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-base leading-7 text-amber-950">
+            <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950 sm:p-6 sm:text-base sm:leading-7">
               <h2 className="font-semibold">Autenticação ainda não configurada</h2>
               <p className="mt-2">
                 Configure as variáveis públicas `VITE_FIREBASE_*` conforme `docs/FIREBASE_SETUP.md` e gere novamente o frontend. Nunca coloque credenciais privadas no navegador.
@@ -108,26 +108,26 @@ export function LoginScreen() {
             </div>
           ) : (
             <div>
-              <header className="mb-12">
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#005BAC] sm:text-base">
+              <header className="mb-8 sm:mb-12">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#005BAC] xs:text-sm sm:text-base">
                   Acesso institucional
                 </p>
-                <h1 className="mt-3 text-5xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-[56px]">
+                <h1 className="mt-2.5 text-[clamp(2.1rem,6vw,3.5rem)] font-semibold leading-tight tracking-tight text-slate-900 sm:mt-3">
                   Boas-vindas!
                 </h1>
-                <p className="mt-4 text-lg leading-relaxed text-slate-500 sm:text-xl">
+                <p className="mt-3 text-base leading-relaxed text-slate-500 sm:mt-4 sm:text-lg lg:text-xl">
                   Entre no MIRI com sua conta Google institucional.
                 </p>
               </header>
 
               {initializationError && (
-                <p role="alert" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-base leading-6 text-amber-900">
+                <p role="alert" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 sm:text-base">
                   {initializationError}
                 </p>
               )}
 
               {(error || accessError) && (
-                <p role="alert" className="mb-6 flex gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-base leading-6 text-rose-800">
+                <p role="alert" className="mb-6 flex gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-800 sm:text-base">
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                   <span>{error || accessError}</span>
                 </p>
@@ -140,17 +140,17 @@ export function LoginScreen() {
                 whileHover={isBusy ? undefined : { y: -1 }}
                 whileTap={isBusy ? undefined : { scale: 0.99 }}
                 transition={{ duration: 0.15 }}
-                className="flex min-h-16 w-full cursor-pointer items-center justify-center gap-4 rounded-2xl border border-slate-300 bg-white px-6 py-4 text-lg font-semibold text-slate-800 shadow-xs transition hover:border-[#005BAC]/50 hover:bg-[#f2f6fa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+                className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-base font-semibold text-slate-800 shadow-xs transition hover:border-[#005BAC]/50 hover:bg-[#f2f6fa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 sm:min-h-16 sm:gap-4 sm:px-6 sm:py-4 sm:text-lg"
               >
                 {isBusy ? (
-                  <LoaderCircle className="h-7 w-7 animate-spin text-[#005BAC]" aria-hidden="true" />
+                  <LoaderCircle className="h-6 w-6 animate-spin text-[#005BAC] sm:h-7 sm:w-7" aria-hidden="true" />
                 ) : (
-                  <img src="/assets/google-icon.svg" alt="" className="h-7 w-7 shrink-0" aria-hidden="true" />
+                  <img src="/assets/google-icon.svg" alt="" className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden="true" />
                 )}
                 Continuar com Google
               </motion.button>
 
-              <p className="mt-12 border-t border-slate-100 pt-6 text-center text-sm leading-6 text-slate-400">
+              <p className="mt-8 border-t border-slate-100 pt-5 text-center text-xs leading-5 text-slate-400 sm:mt-12 sm:pt-6 sm:text-sm sm:leading-6">
                 O Firebase Authentication gerencia sua sessão. O MIRI não recebe nem armazena sua senha Google.
               </p>
             </div>
@@ -163,34 +163,34 @@ export function LoginScreen() {
         initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.45, ease: ENTRANCE_EASE }}
-        className="relative flex min-h-[340px] flex-col overflow-hidden bg-gradient-to-br from-[#013780] via-[#004E96] to-[#005BAC] px-7 py-8 text-white sm:px-10 sm:py-10 lg:w-1/2 lg:min-h-dvh lg:rounded-tl-[45px] lg:rounded-bl-[45px] lg:px-14 lg:py-12"
+        className="relative flex min-h-[320px] flex-col overflow-hidden bg-gradient-to-br from-[#013780] via-[#004E96] to-[#005BAC] px-4 py-7 text-white xs:px-6 sm:px-10 sm:py-10 lg:w-1/2 lg:min-h-dvh lg:rounded-tl-[45px] lg:rounded-bl-[45px] lg:px-14 lg:py-12"
       >
         <div className="relative z-10">
-          <div className="flex flex-wrap items-start justify-center gap-5 sm:gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-3 xs:gap-5 sm:gap-6">
             <img
               src="/assets/dinov-logo-light.svg"
               alt="DINOV — Diretoria de Inovação"
-              className="h-16 w-auto max-w-full object-contain sm:h-20 lg:h-24"
+              className="h-12 w-auto max-w-[130px] object-contain xs:h-14 xs:max-w-full sm:h-20 lg:h-24"
             />
-            <span className="mt-2 hidden h-14 w-px bg-white/25 sm:block lg:h-16" aria-hidden="true" />
+            <span className="hidden h-10 w-px bg-white/25 xs:block sm:h-14 lg:h-16" aria-hidden="true" />
             <img
               src="/assets/ciseb-logo-light.svg"
               alt="CISEB — Centro de Inovação e Sustentabilidade da Educação Básica"
-              className="h-16 w-auto max-w-full object-contain sm:h-20 lg:h-24"
+              className="h-12 w-auto max-w-[130px] object-contain xs:h-14 xs:max-w-full sm:h-20 lg:h-24"
             />
           </div>
-          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9bdcff]">
+          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9bdcff] sm:mt-5 sm:text-[11px] sm:tracking-[0.2em]">
             Educação • Inovação • Sustentabilidade
           </p>
-          <h2 className="mt-2 max-w-md text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-[32px]">
+          <h2 className="mt-2 max-w-md text-xl font-semibold leading-tight tracking-tight xs:text-2xl sm:text-3xl lg:text-[32px]">
             Ideias que fortalecem a educação pública.
           </h2>
-          <p className="mt-2 max-w-md text-sm leading-6 text-blue-100/85">
+          <p className="mt-2 max-w-md text-xs leading-5 text-blue-100/85 sm:text-sm sm:leading-6">
             Explore diretrizes, documentos e práticas pedagógicas em um só lugar.
           </p>
 
           <div
-            className="mt-6 flex flex-col gap-4 border-t border-white/15 pt-5 sm:flex-row sm:items-end sm:justify-between"
+            className="mt-5 flex flex-col gap-4 border-t border-white/15 pt-4 sm:mt-6 sm:flex-row sm:items-end sm:justify-between sm:pt-5"
             onMouseEnter={() => setIsCarouselPaused(true)}
             onMouseLeave={() => setIsCarouselPaused(false)}
           >
@@ -206,7 +206,7 @@ export function LoginScreen() {
                       setSlideIndex(prev => (prev - 1 + MASCOT_SLIDES.length) % MASCOT_SLIDES.length)
                     }
                     aria-label="Explicação anterior"
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center border border-white/20 text-blue-100 transition hover:bg-white/10"
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-white/20 text-blue-100 transition hover:bg-white/10"
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -214,14 +214,14 @@ export function LoginScreen() {
                     type="button"
                     onClick={() => setSlideIndex(prev => (prev + 1) % MASCOT_SLIDES.length)}
                     aria-label="Próxima explicação"
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center border border-white/20 text-blue-100 transition hover:bg-white/10"
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-white/20 text-blue-100 transition hover:bg-white/10"
                   >
                     <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
 
-              <div className="mt-3 min-h-[128px]">
+              <div className="mt-3 min-h-[112px] sm:min-h-[128px]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentSlide.tag}
@@ -231,7 +231,7 @@ export function LoginScreen() {
                     transition={{ duration: 0.25, ease: ENTRANCE_EASE }}
                   >
                     <p className="text-sm font-semibold text-[#9bdcff]">{currentSlide.tag}</p>
-                    <p className="mt-1.5 text-base leading-relaxed text-white/95 sm:text-lg">
+                    <p className="mt-1.5 text-sm leading-relaxed text-white/95 xs:text-base sm:text-lg">
                       {currentSlide.text}
                     </p>
                   </motion.div>
@@ -247,7 +247,7 @@ export function LoginScreen() {
                     aria-selected={index === slideIndex}
                     aria-label={slide.tag}
                     onClick={() => setSlideIndex(index)}
-                    className={`h-1.5 cursor-pointer transition-all ${
+                    className={`h-2 cursor-pointer rounded-full transition-all ${
                       index === slideIndex ? 'w-7 bg-[#00AAFF]' : 'w-2.5 bg-white/30 hover:bg-white/50'
                     }`}
                   />
@@ -258,13 +258,13 @@ export function LoginScreen() {
             <img
               src="/assets/mascote/mascote-login.png"
               alt="Mascote do MIRI dando boas-vindas"
-              className="h-40 w-auto shrink-0 self-end object-contain object-bottom sm:h-48 lg:h-56"
+              className="h-32 w-auto shrink-0 self-center object-contain object-bottom xs:h-36 sm:h-48 sm:self-end lg:h-56"
             />
           </div>
         </div>
 
         <div className="relative z-10 mt-auto flex items-center gap-2 pt-4 text-xs text-blue-100/90">
-          <ShieldCheck className="h-4 w-4 text-[#059669]" aria-hidden="true" />
+          <ShieldCheck className="h-4 w-4 shrink-0 text-[#059669]" aria-hidden="true" />
           Acesso protegido pela DINOV
         </div>
       </motion.aside>

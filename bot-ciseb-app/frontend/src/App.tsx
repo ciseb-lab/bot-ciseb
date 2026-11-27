@@ -148,7 +148,7 @@ function AuthenticatedApp({ user }: { user: User }) {
   const cursorRef = useRef<QueryDocumentSnapshot<DocumentData> | undefined>(undefined);
   const loadedConversationIds = useRef(new Set<string>());
   const [activeSessionId, setActiveSessionId] = useState('draft');
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true));
   const [isLoading, setIsLoading] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isCurriculumOpen, setIsCurriculumOpen] = useState(false);
@@ -450,12 +450,12 @@ function AuthenticatedApp({ user }: { user: User }) {
   };
 
   return (
-    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-white font-sans text-slate-900 antialiased">
-      {sidebarOpen && window.innerWidth < 768 && (
+    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-white font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+      {sidebarOpen && (
         <button
           type="button"
-          aria-label="Fechar menu"
-          className="fixed inset-0 z-30 bg-slate-950/30 md:hidden"
+          aria-label="Fechar menu lateral"
+          className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-[2px] transition-opacity md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -475,12 +475,13 @@ function AuthenticatedApp({ user }: { user: User }) {
         userPhotoUrl={user.photoURL}
         onLogout={() => void logout()}
         onItemClick={item => {
+          if (window.innerWidth < 768) setSidebarOpen(false);
           if (item === 'manual') setIsDocsOpen(true);
           if (item === 'wizard') setIsPlanBuilderOpen(true);
           if (item === 'curriculum') setIsCurriculumOpen(true);
         }}
       />
-      <Suspense fallback={<main className="flex h-dvh items-center justify-center bg-[#f2f6fa] text-sm text-slate-500" role="status">Carregando conversa…</main>}>
+      <Suspense fallback={<main className="flex h-dvh flex-1 items-center justify-center bg-[#f2f6fa] text-sm text-slate-500 dark:bg-slate-950 dark:text-slate-400" role="status">Carregando conversa…</main>}>
         <ChatView
           messages={messages}
           isLoading={isLoading || isHistoryLoading || isLoadingConversationMessages}
@@ -507,16 +508,16 @@ function AuthenticatedApp({ user }: { user: User }) {
       )}
       {isCurriculumOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
-          <div ref={curriculumDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-xs sm:p-6" role="dialog" aria-modal="true" aria-labelledby="curriculum-browser-title">
-            <section className="flex max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-              <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-900">
-                <div>
-                  <h2 id="curriculum-browser-title" className="text-base font-bold text-slate-900 dark:text-slate-100">Habilidades BNCC e Computação</h2>
+          <div ref={curriculumDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-xs sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-labelledby="curriculum-browser-title">
+            <section className="flex max-h-[92dvh] w-full max-w-5xl 2xl:max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+              <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3.5 sm:items-center sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-900">
+                <div className="min-w-0 flex-1">
+                  <h2 id="curriculum-browser-title" className="text-sm font-bold text-slate-900 sm:text-base dark:text-slate-100">Habilidades BNCC e Computação</h2>
                   <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Busque por tema ou código e envie direto para a conversa com um clique.</p>
                 </div>
-                <button type="button" onClick={() => setIsCurriculumOpen(false)} aria-label="Fechar consulta curricular" className="cursor-pointer rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"><X className="h-5 w-5" /></button>
+                <button type="button" onClick={() => setIsCurriculumOpen(false)} aria-label="Fechar consulta curricular" className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"><X className="h-5 w-5" /></button>
               </header>
-              <div className="overflow-y-auto p-4 sm:p-6">
+              <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6">
                 <CurriculumBrowser onSelectSkillForPlan={(skill: CurriculumSkill) => {
                   setIsCurriculumOpen(false);
                   void handleSendMessage(`Quero explorar esta habilidade curricular como ponto de partida para uma proposta.\n\nCódigo: ${skill.code}\nTexto registrado: ${skill.verbatimText}\nFonte indicada no catálogo: ${skill.sourceDocument}\nEtapa: ${skill.stage}\n\nAjude-me a desenvolver possibilidades relacionadas, sem presumir formato ou recursos. Diferencie o registro curricular das sugestões.`);
@@ -528,12 +529,12 @@ function AuthenticatedApp({ user }: { user: User }) {
       )}
       {isPlanBuilderOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
-          <div ref={planBuilderDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-xs sm:p-6" role="dialog" aria-modal="true" aria-label="Estruturar uma proposta">
-            <div className="relative my-auto w-full max-w-3xl">
+          <div ref={planBuilderDialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-2 backdrop-blur-xs sm:p-4 lg:p-6" role="dialog" aria-modal="true" aria-label="Estruturar uma proposta">
+            <div className="relative my-auto w-full max-w-3xl xl:max-w-4xl">
               <button
                 type="button"
                 onClick={() => setIsPlanBuilderOpen(false)}
-                className="absolute right-4 top-4 z-10 cursor-pointer rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                className="absolute right-3 top-3 z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] sm:right-4 sm:top-4 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                 aria-label="Fechar estruturador"
               >
                 <X className="h-5 w-5" />

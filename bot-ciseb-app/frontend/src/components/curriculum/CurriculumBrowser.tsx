@@ -146,9 +146,9 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Barra superior limpa: Busca + Filtros rápidos */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs sm:p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1">
             <HaloSearchInput
@@ -160,12 +160,12 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 gap-2 xs:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
             <select
               value={selectedComponent}
               onChange={event => setSelectedComponent(event.target.value)}
               aria-label="Filtrar por componente curricular"
-              className="h-9 cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="h-9 w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 lg:w-auto dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <option value="ALL">Todos os componentes</option>
               <option value="Computação">Computação</option>
@@ -179,7 +179,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
               value={selectedAxis}
               onChange={event => setSelectedAxis(event.target.value)}
               aria-label="Filtrar por eixo estruturante"
-              className="h-9 cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="h-9 w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 lg:w-auto dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <option value="ALL">Todos os eixos</option>
               <option value="Pensamento Computacional">Pensamento Computacional</option>
@@ -191,7 +191,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
         </div>
 
         {/* Abas de Etapa em pílulas + Contador */}
-        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 sm:mt-3.5 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Etapa de ensino">
             {STAGE_TABS.map(tab => {
               const active = selectedStage === tab.id;
@@ -202,7 +202,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
                   role="tab"
                   aria-selected={active}
                   onClick={() => setSelectedStage(tab.id)}
-                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  className={`min-h-8 cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition sm:px-3 ${
                     active
                       ? 'bg-[#005BAC] text-white shadow-xs dark:bg-[#00AAFF] dark:text-slate-950'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
@@ -234,7 +234,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
 
       {/* Grid de Habilidades Moderno e Limpo */}
       {filteredSkills.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center sm:p-10 dark:border-slate-800 dark:bg-slate-900">
           <AlertTriangle className="mx-auto mb-2.5 h-7 w-7 text-amber-500" aria-hidden="true" />
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
             Nenhuma habilidade encontrada
@@ -246,7 +246,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
             <button
               type="button"
               onClick={resetFilters}
-              className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#005BAC] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#004E96]"
+              className="mt-4 inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-[#005BAC] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#004E96]"
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
               Mostrar todas as habilidades
@@ -254,18 +254,18 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3.5 2xl:grid-cols-3">
           {filteredSkills.map(skill => {
             const verifyState = verifications[skill.code];
             return (
               <article
                 key={skill.code}
-                className="group flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs transition hover:border-[#005BAC]/40 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-[#00AAFF]/40"
+                className="group flex min-w-0 flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs transition hover:border-[#005BAC]/40 hover:shadow-md sm:p-4 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-[#00AAFF]/40"
               >
                 <div>
                   {/* Topo do Card: Código + Badges + Copiar */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                       <span className="rounded-lg bg-[#E0F2FE] px-2.5 py-1 font-mono text-xs font-bold text-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff]">
                         {skill.code}
                       </span>
@@ -282,7 +282,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
                       onClick={() => copyToClipboard(skill.verbatimText, skill.code)}
                       title="Copiar código e descrição"
                       aria-label={`Copiar habilidade ${skill.code}`}
-                      className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                     >
                       {copiedCode === skill.code ? (
                         <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
@@ -313,13 +313,13 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
                 </div>
 
                 {/* Rodapé do Card: Conferir PDF + Explorar no chat */}
-                <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                   <div className="min-w-0 flex-1">
                     {!verifyState ? (
                       <button
                         type="button"
                         onClick={() => void handleVerifyInPdf(skill.code)}
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#00AAFF]"
+                        className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#00AAFF]"
                       >
                         <FileCheck2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                         <span>Conferir no PDF</span>
@@ -331,7 +331,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
                       </span>
                     ) : (
                       <span
-                        className={`inline-flex items-center gap-1 truncate px-1 text-[11px] font-medium ${
+                        className={`inline-flex max-w-full items-center gap-1 truncate px-1 text-[11px] font-medium ${
                           verifyState.status === 'verified'
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : 'text-slate-500 dark:text-slate-400'
@@ -349,7 +349,7 @@ export const CurriculumBrowser: React.FC<CurriculumBrowserProps> = ({ onSelectSk
                   <button
                     type="button"
                     onClick={() => onSelectSkillForPlan(skill)}
-                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl bg-[#005BAC] px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
+                    className="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl bg-[#005BAC] px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
                   >
                     <span>Usar no chat</span>
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

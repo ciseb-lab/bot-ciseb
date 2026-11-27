@@ -1,7 +1,7 @@
 import { signOut } from 'firebase/auth';
 import { auth, firebaseRequestHeaders } from '../firebase/client.ts';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const API_BASE_URL = ((import.meta.env ?? {}).VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
 export function apiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;

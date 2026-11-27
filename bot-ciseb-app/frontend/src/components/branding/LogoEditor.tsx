@@ -97,14 +97,14 @@ export function LogoEditor() {
               <a href="/" className="text-xs text-blue-700 underline-offset-2 hover:underline">Voltar ao MIRI</a>
             </div>
           </div>
-          <div className="flex flex-wrap items-end justify-center gap-3 text-sm">
+          <div className="grid w-full grid-cols-1 gap-3 text-sm xs:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap sm:items-end sm:justify-center">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold uppercase text-gray-500">Texto principal</span>
-              <input value={mainText} onChange={event => setMainText(event.target.value)} className="w-36 rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              <input value={mainText} onChange={event => setMainText(event.target.value)} className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-36" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold uppercase text-gray-500">Subtexto</span>
-              <input value={subtitle} onChange={event => setSubtitle(event.target.value)} className="w-52 rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              <input value={subtitle} onChange={event => setSubtitle(event.target.value)} className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-52" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold uppercase text-gray-500">Fundo</span>

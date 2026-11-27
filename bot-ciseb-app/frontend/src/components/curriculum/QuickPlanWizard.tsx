@@ -382,13 +382,13 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
   };
 
   return (
-    <div className="mx-auto flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+    <div className="mx-auto flex max-h-[92dvh] w-full max-w-3xl xl:max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
       {/* Cabeçalho fixo com indicador discreto de progresso */}
-      <div className="shrink-0 border-b border-slate-100 px-5 py-4 pr-12 sm:px-7 dark:border-slate-800">
+      <div className="shrink-0 border-b border-slate-100 px-3.5 py-3 pr-12 xs:px-5 sm:px-7 sm:py-4 dark:border-slate-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-[#E0F2FE] px-2.5 py-0.5 text-[11px] font-semibold text-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff]">
-            <Sparkles className="h-3 w-3" aria-hidden="true" />
-            <span>Roteiro guiado · Planejamento Inteligente</span>
+          <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#E0F2FE] px-2.5 py-0.5 text-[11px] font-semibold text-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff]">
+            <Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">Roteiro guiado · Planejamento Inteligente</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400" aria-live="polite">
             <span>Progresso: <strong className="font-semibold text-[#005BAC] dark:text-[#00AAFF]">{filledBlocksCount}/4 blocos</strong></span>
@@ -396,7 +396,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
               {[hasBlock1, hasBlock2, hasBlock3, hasBlock4].map((done, idx) => (
                 <span
                   key={idx}
-                  className={`h-1.5 w-5 rounded-full transition-colors ${
+                  className={`h-1.5 w-4 rounded-full transition-colors sm:w-5 ${
                     done ? 'bg-[#005BAC] dark:bg-[#00AAFF]' : 'bg-slate-200 dark:bg-slate-700'
                   }`}
                 />
@@ -405,7 +405,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
           </div>
         </div>
 
-        <h2 className="mt-1.5 text-lg font-bold tracking-tight text-slate-900 sm:text-xl dark:text-slate-100">
+        <h2 className="mt-1.5 text-base font-bold tracking-tight text-slate-900 xs:text-lg sm:text-xl dark:text-slate-100">
           Criar proposta passo a passo
         </h2>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -414,21 +414,21 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
       </div>
 
       <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex-1 space-y-3.5 overflow-y-auto px-3 py-3.5 xs:px-4 sm:space-y-4 sm:px-6 sm:py-5">
           {/* BLOCO 1 — IDENTIDADE CURRICULAR */}
           <section className="rounded-xl border border-slate-200/90 bg-slate-50/60 transition dark:border-slate-800 dark:bg-slate-950/50">
             <button
               type="button"
               onClick={() => toggleBlock(1)}
               aria-expanded={openBlocks[1]}
-              className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
+              className="flex w-full cursor-pointer items-center justify-between gap-2.5 px-3 py-2.5 text-left sm:gap-3 sm:px-4 sm:py-3"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E0F2FE] text-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff]">
                   <Compass className="h-4 w-4" aria-hidden="true" />
                 </span>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-[#005BAC] dark:text-[#00AAFF]">
                       Bloco 1 — Identidade Curricular
                     </h3>
@@ -441,7 +441,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 {hasBlock1 && (
                   <span className="hidden rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 sm:inline-block dark:text-emerald-300">
                     {[
@@ -456,11 +456,11 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
             </button>
 
             {openBlocks[1] && (
-              <div className="space-y-4 border-t border-slate-200/70 px-4 pb-4 pt-3.5 dark:border-slate-800">
+              <div className="space-y-4 border-t border-slate-200/70 px-3 pb-3.5 pt-3 sm:px-4 sm:pb-4 sm:pt-3.5 dark:border-slate-800">
                 {/* Campo 1. Área do Conhecimento e Componente Curricular */}
                 <div className="space-y-3">
                   <div>
-                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                         1. Área do Conhecimento e Componente Curricular <span className="font-normal text-slate-400">· seleção única ou múltipla</span>
                       </span>
@@ -483,7 +483,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                             key={area.id}
                             type="button"
                             onClick={() => setSelectedAreas(prev => toggleMulti(prev, area.id))}
-                            className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                            className={`min-h-8 cursor-pointer rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
                               active
                                 ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
                                 : derivedActive
@@ -504,7 +504,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                       <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                         Componente <span className="font-normal text-slate-400">· selecione um ou mais para projetos interdisciplinares</span>
                       </span>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         {selectedAreas.length > 0 && (
                           <button
                             type="button"
@@ -526,10 +526,10 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                       </div>
                     </div>
 
-                    <div className="space-y-2 rounded-lg border border-slate-200/70 bg-white/80 p-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+                    <div className="space-y-2.5 rounded-lg border border-slate-200/70 bg-white/80 p-2.5 dark:border-slate-800 dark:bg-slate-900/60">
                       {displayedAreaGroups.map(area => (
-                        <div key={area.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
-                          <span className="w-44 shrink-0 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        <div key={area.id} className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-2.5">
+                          <span className="shrink-0 text-[11px] font-semibold text-slate-500 md:w-44 dark:text-slate-400">
                             {area.label}
                           </span>
                           <div className="flex flex-wrap gap-1.5">
@@ -540,7 +540,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                                   key={componentLabel}
                                   type="button"
                                   onClick={() => setSelectedComponents(prev => toggleMulti(prev, componentLabel))}
-                                  className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                                  className={`min-h-8 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                                     active
                                       ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
                                       : 'border border-slate-200 bg-slate-50/70 text-slate-600 hover:border-[#005BAC]/40 hover:bg-white hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
@@ -559,7 +559,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
 
                 {/* Campo 2. Trilha Formativa / Tema Integrador */}
                 <div className="border-t border-slate-200/70 pt-3.5 dark:border-slate-800">
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                       2. Trilha Formativa / Tema Integrador <span className="font-normal text-slate-400">· pílulas clicáveis</span>
                     </span>
@@ -581,7 +581,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                           key={trail}
                           type="button"
                           onClick={() => setSelectedTrails(prev => toggleMulti(prev, trail))}
-                          className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition ${
+                          className={`min-h-8 cursor-pointer rounded-full px-3 py-1.5 text-left text-xs font-medium transition ${
                             active
                               ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
                               : 'border border-slate-200 bg-white text-slate-600 hover:border-[#005BAC]/40 hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
@@ -603,7 +603,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                       value={subtheme}
                       onChange={event => setSubtheme(event.target.value)}
                       placeholder="Ex.: Bioeconomia na Amazônia, algoritmos e viés racial, preservação dos igarapés, saberes tradicionais..."
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#00AAFF]"
+                      className="min-h-9 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#00AAFF]"
                     />
                   </div>
                 </div>
@@ -617,14 +617,14 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
               type="button"
               onClick={() => toggleBlock(2)}
               aria-expanded={openBlocks[2]}
-              className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
+              className="flex w-full cursor-pointer items-center justify-between gap-2.5 px-3 py-2.5 text-left sm:gap-3 sm:px-4 sm:py-3"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E0F2FE] text-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff]">
                   <Users className="h-4 w-4" aria-hidden="true" />
                 </span>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-[#005BAC] dark:text-[#00AAFF]">
                       Bloco 2 — Público-Alvo
                     </h3>
@@ -637,7 +637,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 {hasBlock2 && (
                   <span className="hidden rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 sm:inline-block dark:text-emerald-300">
                     {[
@@ -651,8 +651,8 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
             </button>
 
             {openBlocks[2] && (
-              <div className="space-y-3 border-t border-slate-200/70 px-4 pb-4 pt-3.5 dark:border-slate-800">
-                <div className="flex items-center justify-between gap-2">
+              <div className="space-y-3 border-t border-slate-200/70 px-3 pb-3.5 pt-3 sm:px-4 sm:pb-4 sm:pt-3.5 dark:border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                     3. Etapa e Ano/Série atendida <span className="font-normal text-slate-400">· agrupado por ciclos</span>
                   </span>
@@ -671,7 +671,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
                   {STAGE_CYCLES.map(cycle => (
                     <div
                       key={cycle.cycleId}
@@ -688,7 +688,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                               key={option.value}
                               type="button"
                               onClick={() => setSelectedYears(prev => toggleMulti(prev, option.value))}
-                              className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                              className={`min-h-8 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                                 active
                                   ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
                                   : 'border border-slate-200 bg-slate-50/70 text-slate-600 hover:border-[#005BAC]/40 hover:bg-white hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
@@ -715,7 +715,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                             key={modality.id}
                             type="button"
                             onClick={() => setSelectedModalities(prev => toggleMulti(prev, modality.id))}
-                            className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                            className={`min-h-8 cursor-pointer rounded-lg px-2.5 py-1 text-left text-xs font-medium transition ${
                               active
                                 ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
                                 : 'border border-slate-200 bg-slate-50/70 text-slate-600 hover:border-[#005BAC]/40 hover:bg-white hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
@@ -784,13 +784,13 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
               type="button"
               onClick={() => toggleBlock(3)}
               aria-expanded={openBlocks[3]}
-              className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
+              className="flex w-full cursor-pointer items-center justify-between gap-2.5 px-3 py-2.5 text-left sm:gap-3 sm:px-4 sm:py-3"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E0F2FE] text-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff]">
                   <Layers className="h-4 w-4" aria-hidden="true" />
                 </span>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-[#005BAC] dark:text-[#00AAFF]">
                     Bloco 3 — Estrutura Pedagógica
                   </h3>
@@ -799,7 +799,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <span className="hidden rounded-full bg-[#005BAC]/10 px-2 py-0.5 text-[10px] font-semibold text-[#005BAC] sm:inline-block dark:bg-[#00AAFF]/15 dark:text-[#9bdcff]">
                   {docType}
                 </span>
@@ -808,11 +808,11 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
             </button>
 
             {openBlocks[3] && (
-              <div className="space-y-2.5 border-t border-slate-200/70 px-4 pb-4 pt-3.5 dark:border-slate-800">
+              <div className="space-y-2.5 border-t border-slate-200/70 px-3 pb-3.5 pt-3 sm:px-4 sm:pb-4 sm:pt-3.5 dark:border-slate-800">
                 <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
                   4. Formato do Documento <span className="font-normal text-slate-400">· cada formato aciona uma arquitetura própria na IA</span>
                 </span>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
                   {FORMAT_OPTIONS.map(option => {
                     const selected = docType === option.id;
                     return (
@@ -820,14 +820,14 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                         key={option.id}
                         type="button"
                         onClick={() => setDocType(option.id)}
-                        className={`flex cursor-pointer flex-col justify-between rounded-xl border p-3.5 text-left transition ${
+                        className={`flex cursor-pointer flex-col justify-between rounded-xl border p-3 text-left transition sm:p-3.5 ${
                           selected
                             ? 'border-[#005BAC] bg-[#E0F2FE]/55 shadow-2xs dark:border-[#00AAFF] dark:bg-[#005BAC]/25'
                             : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:bg-slate-800/70'
                         }`}
                       >
                         <div className="flex w-full items-start justify-between gap-2">
-                          <div>
+                          <div className="min-w-0">
                             <div className={`text-xs font-bold ${selected ? 'text-[#005BAC] dark:text-[#9bdcff]' : 'text-slate-900 dark:text-slate-100'}`}>
                               {option.title}
                             </div>
@@ -865,13 +865,13 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
               type="button"
               onClick={() => toggleBlock(4)}
               aria-expanded={openBlocks[4]}
-              className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
+              className="flex w-full cursor-pointer items-center justify-between gap-2.5 px-3 py-2.5 text-left sm:gap-3 sm:px-4 sm:py-3"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E0F2FE] text-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff]">
                   <MapPin className="h-4 w-4" aria-hidden="true" />
                 </span>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-[#005BAC] dark:text-[#00AAFF]">
                     Bloco 4: Infraestrutura e Território
                   </h3>
@@ -880,7 +880,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 {hasBlock4 && (
                   <span className="hidden rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 sm:inline-block dark:text-emerald-300">
                     {[
@@ -894,9 +894,9 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
             </button>
 
             {openBlocks[4] && (
-              <div className="space-y-3.5 border-t border-slate-200/70 px-4 pb-4 pt-3.5 dark:border-slate-800">
+              <div className="space-y-3.5 border-t border-slate-200/70 px-3 pb-3.5 pt-3 sm:px-4 sm:pb-4 sm:pt-3.5 dark:border-slate-800">
                 <div>
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                       5. Recursos disponíveis na escola e território <span className="font-normal text-slate-400">· pílulas de múltipla escolha</span>
                     </span>
@@ -910,7 +910,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                       </button>
                     )}
                   </div>
-                  <div className="space-y-2.5 rounded-lg border border-slate-200/70 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="space-y-2.5 rounded-lg border border-slate-200/70 bg-white/80 p-2.5 sm:p-3 dark:border-slate-800 dark:bg-slate-900/60">
                     {RESOURCE_GROUPS.map(group => (
                       <div key={group.groupLabel}>
                         <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -924,7 +924,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                                 key={item.value}
                                 type="button"
                                 onClick={() => setSelectedResources(prev => toggleMulti(prev, item.value))}
-                                className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition ${
+                                className={`min-h-8 cursor-pointer rounded-full px-3 py-1 text-left text-xs font-medium transition ${
                                   active
                                     ? 'bg-[#005BAC] text-white shadow-2xs dark:bg-[#00AAFF] dark:text-slate-950'
                                     : 'border border-slate-200 bg-slate-50/70 text-slate-600 hover:border-[#005BAC]/40 hover:bg-white hover:text-[#005BAC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-[#00AAFF]/40'
@@ -950,7 +950,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
                     value={schoolContext}
                     onChange={event => setSchoolContext(event.target.value)}
                     placeholder="Ex.: Escola ribeirinha, turma com 35 alunos, foco em aprendizagem ativa, 2 aulas semanais..."
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#00AAFF]"
+                    className="min-h-9 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 outline-none transition focus:border-[#005BAC] focus:ring-2 focus:ring-[#00AAFF]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#00AAFF]"
                   />
                 </div>
               </div>
@@ -959,7 +959,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
         </div>
 
         {/* Rodapé fixo com validação e orientação clara */}
-        <div className="flex shrink-0 flex-col gap-2 border-t border-slate-100 bg-white px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-7 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex shrink-0 flex-col gap-2.5 border-t border-slate-100 bg-white px-3.5 py-3 xs:px-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-3.5 dark:border-slate-800 dark:bg-slate-900">
           <div className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
             {!canSubmit ? (
               <span className="font-medium text-amber-700 dark:text-amber-300">
@@ -978,7 +978,7 @@ export const QuickPlanWizard: React.FC<QuickPlanWizardProps> = ({ onSubmitToChat
           <button
             type="submit"
             disabled={!canSubmit}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#005BAC] px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-10 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#005BAC] px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-[#004E96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             <span>Levar para o chat</span>
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

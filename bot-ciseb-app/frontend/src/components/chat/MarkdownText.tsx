@@ -33,24 +33,24 @@ const components: Components = {
     </blockquote>
   ),
   a: ({ children, href }) => (
-    <a className="text-[#005BAC] underline underline-offset-2 dark:text-[#38bdf8]" href={href} target="_blank" rel="noreferrer">
+    <a className="break-all text-[#005BAC] underline underline-offset-2 dark:text-[#38bdf8]" href={href} target="_blank" rel="noreferrer">
       {children}
     </a>
   ),
   code: ({ children }) => (
-    <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.9em] text-slate-800 dark:bg-slate-800 dark:text-sky-200">
+    <code className="break-words rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.88em] text-slate-800 dark:bg-slate-800 dark:text-sky-200">
       {children}
     </code>
   ),
   pre: ({ children }) => (
-    <pre className="my-3 overflow-x-auto rounded-md bg-slate-900 p-3 text-sm text-slate-100">
+    <pre className="my-3 max-w-full overflow-x-auto rounded-md bg-slate-900 p-3 text-xs sm:text-sm text-slate-100">
       {children}
     </pre>
   ),
   hr: () => <hr className="my-4 border-slate-200 dark:border-slate-700" />,
   table: ({ children }) => (
-    <div className="my-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-      <table className="w-full border-collapse text-left text-xs sm:text-sm">
+    <div className="my-3 max-w-full overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+      <table className="min-w-[360px] w-full border-collapse text-left text-xs sm:text-sm">
         {children}
       </table>
     </div>

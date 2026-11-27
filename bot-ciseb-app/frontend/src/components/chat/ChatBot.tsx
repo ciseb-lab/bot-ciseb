@@ -136,20 +136,20 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onOpenPrint, externalQuery, on
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[580px] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="flex h-[calc(100dvh-140px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:min-h-[540px]">
       {/* Top Protocol Status Strip */}
-      <div className="bg-[#005BAC]/5 border-b border-[#005BAC]/15 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-[#005BAC]" />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#005BAC]/15 bg-[#005BAC]/5 px-3 py-2 text-xs sm:gap-3 sm:px-4 sm:py-2.5">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-[#005BAC]" />
           <span className="font-semibold text-[#005BAC]">Protocolo Oficial CISEB 1.0</span>
-          <span className="text-slate-400">·</span>
-          <span className="text-slate-600">Tolerância Zero a Alucinações</span>
-          <span className="text-slate-400">·</span>
-          <span className="text-slate-600">Validação Automática de Códigos</span>
+          <span className="hidden text-slate-400 sm:inline">·</span>
+          <span className="hidden text-slate-600 sm:inline">Tolerância Zero a Alucinações</span>
+          <span className="hidden text-slate-400 md:inline">·</span>
+          <span className="hidden text-slate-600 md:inline">Validação Automática de Códigos</span>
         </div>
         <div className="flex items-center gap-2 text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-[#059669]"></span>
-          <span>Base Curricular Ativa (SEDUC-PA / MEC 2022)</span>
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[#059669]"></span>
+          <span className="truncate">Base Curricular Ativa (SEDUC-PA / MEC 2022)</span>
         </div>
       </div>
 
