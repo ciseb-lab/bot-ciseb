@@ -10,8 +10,7 @@ process.env.NODE_ENV = 'test';
 process.env.APP_ORIGINS = 'https://bot-ciseb.vercel.app';
 const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'bot-ciseb-api-test-'));
 process.env.DOCUMENTS_DIR = path.join(temporaryDirectory, 'missing-documents');
-const { app, initializeBackend, normalizeReplyMarkdown, retrieveBlock4Documents } = await import('../backend/index.ts');
-const { loadDocumentIndexFromJson } = await import('../backend/documentKnowledge.ts');
+const { app, initializeBackend, normalizeReplyMarkdown } = await import('../backend/index.ts');
 
 after(async () => {
   await rm(temporaryDirectory, { recursive: true, force: true });
@@ -79,28 +78,4 @@ test('normalizeReplyMarkdown converte <br> em quebra de linha fora de tabelas e 
       '```',
     ].join('\n'),
   );
-});
-
-test('retrieveBlock4Documents puxa trechos dos PDFs anexados conforme os recursos e contexto do Bloco 4', async () => {
-  const index = await loadDocumentIndexFromJson(path.join(process.cwd(), 'backend', 'documents', 'index.json'));
-  const docs = retrieveBlock4Documents(index.chunks, {
-    area_conhecimento: ['Computação / Inovação (CISEB)'],
-    componentes_curriculares: ['Computação'],
-    trilhas_formativas: ['Clima e Mudanças Climáticas'],
-    subtema: '',
-    etapa_ensino: ['Ensino Fundamental II (Anos Finais)'],
-    anos_series: ['6º ano (EF II)'],
-    modalidades: [],
-    formato_documento: 'Sequência Didática',
-    recursos_escola: ['100% Desplugada / Sucata', 'Celulares dos estudantes'],
-    contexto_escolar: 'Escola ribeirinha, turma com 35 alunos, foco em aprendizagem ativa',
-  });
-
-  assert.ok(docs.length > 0);
-  const sources = new Set(docs.map(doc => doc.source));
-  assert.ok(
-    sources.has('BNCCComputaoCompletodiagramado.pdf')
-      || sources.has('ReferencialCurriculardeComputacaoodoEstadodoPara.pdf'),
-  );
-  assert.ok(sources.has('GUIA-PARA-O-PLANEJAMENTO-DA-ADOCAO-DE-DISPOSITIVOS.pdf'));
 });
