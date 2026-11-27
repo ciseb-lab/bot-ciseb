@@ -41,3 +41,29 @@ test('converte tags <br> sem exibir HTML literal nem colar palavras no PDF', asy
     await parser.destroy();
   }
 });
+
+test('inclui cabeçalho institucional e formata fórmulas LaTeX e química de forma legível no PDF', async () => {
+  const pdf = generatePdf(
+    'Fórmulas da Horta Escolar',
+    [
+      '### 1. Fórmulas de Estatística',
+      '* **Média Aritmética:**',
+      '  $$M = \\frac{x_1 + x_2 + x_3 + \\dots + x_n}{n}$$',
+      '* **Fotossíntese:**',
+      '  $$\\ce{6CO2 + 6H2O ->[luz] C6H12O6 + 6O2}$$',
+    ].join('\n'),
+  );
+
+  const parser = new PDFParse({ data: new Uint8Array(pdf) });
+  try {
+    const parsed = await parser.getText();
+    assert.ok(parsed.text.includes('GOVERNO DO ESTADO DO PARÁ'));
+    assert.ok(parsed.text.includes('CISEB'));
+    assert.ok(!parsed.text.includes('\\frac'));
+    assert.ok(!parsed.text.includes('\\ce{'));
+    assert.ok(parsed.text.includes('M = (x1 + x2 + x3 + … + xn) / n'));
+    assert.ok(parsed.text.includes('6CO2 + 6H2O -(luz)-> C6H12O6 + 6O2'));
+  } finally {
+    await parser.destroy();
+  }
+});

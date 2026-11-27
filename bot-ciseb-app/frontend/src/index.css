@@ -89,10 +89,31 @@
   scrollbar-width: none;
 }
 
+.katex {
+  font-size: 1.18em;
+  line-height: 1.4;
+}
+
 .katex-display {
+  display: block;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0.25rem 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 91, 172, 0.14);
+  background-color: rgba(0, 91, 172, 0.04);
+  text-align: center;
+}
+
+.dark .katex-display {
+  border-color: rgba(0, 170, 255, 0.2);
+  background-color: rgba(0, 170, 255, 0.07);
+}
+
+.katex-display > .katex {
+  font-size: 1.32em;
+  line-height: 1.5;
 }
 
 .font-display {
@@ -164,17 +185,74 @@
 }
 
 @media print {
-  header, nav, .no-print, button, input, textarea {
+  @page {
+    size: A4;
+    margin: 12mm 14mm 14mm 14mm;
+  }
+
+  body.pdf-print-active {
+    background: white !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.pdf-print-active > *:not(.pdf-print-root) {
     display: none !important;
   }
+
+  body.pdf-print-active > .pdf-print-root {
+    display: block !important;
+  }
+
+  body.pdf-print-active .pdf-print-sheet {
+    max-width: none !important;
+    width: 100% !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.pdf-print-active .pdf-print-sheet > div:last-child {
+    padding: 12px 0 0 0 !important;
+  }
+
+  body.pdf-print-active .pdf-print-sheet h1,
+  body.pdf-print-active .pdf-print-sheet h2,
+  body.pdf-print-active .pdf-print-sheet h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  body.pdf-print-active .pdf-print-sheet .katex-display,
+  body.pdf-print-active .pdf-print-sheet table,
+  body.pdf-print-active .pdf-print-sheet blockquote,
+  body.pdf-print-active .pdf-print-sheet .pdf-keep-together {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body:not(.pdf-print-active) header,
+  body:not(.pdf-print-active) nav,
+  body:not(.pdf-print-active) .no-print,
+  body:not(.pdf-print-active) button,
+  body:not(.pdf-print-active) input,
+  body:not(.pdf-print-active) textarea {
+    display: none !important;
+  }
+
   .print-only {
     display: block !important;
   }
-  body {
+
+  body:not(.pdf-print-active) {
     background: white !important;
     color: black !important;
     font-size: 11pt !important;
   }
+
   .print-container {
     width: 100% !important;
     margin: 0 !important;
@@ -182,6 +260,7 @@
     box-shadow: none !important;
     border: none !important;
   }
+
   table {
     page-break-inside: avoid;
   }

@@ -1,19 +1,49 @@
-type PdfFont = 'F1' | 'F2' | 'F3';
+type PdfFont = 'F1' | 'F2' | 'F3' | 'F4';
+
+interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+interface TextRun {
+  text: string;
+  font: PdfFont;
+}
 
 interface LayoutLine {
-  text: string;
+  kind: 'text' | 'rule' | 'spacer' | 'formula' | 'table-row' | 'quote';
+  text?: string;
+  runs?: TextRun[];
+  cells?: string[];
+  isTableHeader?: boolean;
   font: PdfFont;
   size: number;
   indent: number;
   gapBefore: number;
   leading: number;
+  color?: RgbColor;
+  headingRule?: boolean;
 }
 
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
-const PAGE_MARGIN = 54;
-const CONTENT_TOP = PAGE_HEIGHT - 58;
-const CONTENT_BOTTOM = 58;
+const PAGE_MARGIN = 48;
+const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
+const FIRST_PAGE_TOP = PAGE_HEIGHT - 166;
+const CONTINUATION_PAGE_TOP = PAGE_HEIGHT - 68;
+const CONTENT_BOTTOM = 56;
+
+const COLOR_CISEB_BLUE: RgbColor = { r: 0, g: 91 / 255, b: 172 / 255 };
+const COLOR_CISEB_DEEP: RgbColor = { r: 1 / 255, g: 55 / 255, b: 128 / 255 };
+const COLOR_CISEB_CYAN: RgbColor = { r: 0, g: 170 / 255, b: 1 };
+const COLOR_TEXT_DARK: RgbColor = { r: 15 / 255, g: 23 / 255, b: 42 / 255 };
+const COLOR_TEXT_BODY: RgbColor = { r: 30 / 255, g: 41 / 255, b: 59 / 255 };
+const COLOR_TEXT_MUTED: RgbColor = { r: 100 / 255, g: 116 / 255, b: 139 / 255 };
+const COLOR_SOFT_TINT: RgbColor = { r: 241 / 255, g: 247 / 255, b: 253 / 255 };
+const COLOR_TABLE_HEAD: RgbColor = { r: 224 / 255, g: 242 / 255, b: 254 / 255 };
+const COLOR_BORDER: RgbColor = { r: 203 / 255, g: 213 / 255, b: 225 / 255 };
+
 const CP1252_SPECIALS = new Map<number, number>([
   [0x20ac, 0x80], [0x201a, 0x82], [0x0192, 0x83], [0x201e, 0x84],
   [0x2026, 0x85], [0x2020, 0x86], [0x2021, 0x87], [0x02c6, 0x88],
@@ -23,6 +53,14 @@ const CP1252_SPECIALS = new Map<number, number>([
   [0x02dc, 0x98], [0x2122, 0x99], [0x0161, 0x9a], [0x203a, 0x9b],
   [0x0153, 0x9c], [0x017e, 0x9e], [0x0178, 0x9f],
 ]);
+
+function rgbFill(color: RgbColor): string {
+  return `${color.r.toFixed(3)} ${color.g.toFixed(3)} ${color.b.toFixed(3)} rg`;
+}
+
+function rgbStroke(color: RgbColor): string {
+  return `${color.r.toFixed(3)} ${color.g.toFixed(3)} ${color.b.toFixed(3)} RG`;
+}
 
 function toPdfBytes(value: string): Buffer {
   const bytes = Array.from(value, character => {
@@ -47,15 +85,149 @@ function literalString(value: string): Buffer {
   return Buffer.from(escaped);
 }
 
-function removeInlineMarkdown(value: string): string {
+function readBracedGroup(source: string, openBraceIndex: number): { content: string; endIndex: number } | null {
+  if (source[openBraceIndex] !== '{') return null;
+  let depth = 0;
+  for (let index = openBraceIndex; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    else if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return { content: source.slice(openBraceIndex + 1, index), endIndex: index + 1 };
+      }
+    }
+  }
+  return null;
+}
+
+function replaceLatexFractions(input: string): string {
+  let result = input;
+  const commandPattern = /\\(?:d|t|c)?frac\s*\{/;
+  let guard = 0;
+
+  while (guard < 20) {
+    guard += 1;
+    const match = commandPattern.exec(result);
+    if (!match) break;
+
+    const firstOpen = match.index + match[0].length - 1;
+    const numeratorGroup = readBracedGroup(result, firstOpen);
+    if (!numeratorGroup) break;
+
+    let secondOpen = numeratorGroup.endIndex;
+    while (secondOpen < result.length && /\s/.test(result[secondOpen])) secondOpen += 1;
+    const denominatorGroup = readBracedGroup(result, secondOpen);
+    if (!denominatorGroup) break;
+
+    const num = formatLatexForPdf(numeratorGroup.content).trim();
+    const den = formatLatexForPdf(denominatorGroup.content).trim();
+    const numNeedsParens = /[+\-\s]/.test(num) && !(num.startsWith('(') && num.endsWith(')'));
+    const denNeedsParens = /[+\-\s]/.test(den) && !(den.startsWith('(') && den.endsWith(')'));
+    const formatted = `${numNeedsParens ? `(${num})` : num} / ${denNeedsParens ? `(${den})` : den}`;
+
+    result = `${result.slice(0, match.index)}${formatted}${result.slice(denominatorGroup.endIndex)}`;
+  }
+
+  return result;
+}
+
+function replaceSingleArgLatexCommand(input: string, commandName: string, transform: (inner: string) => string): string {
+  let result = input;
+  const pattern = new RegExp(`\\\\${commandName}\\s*\\{`);
+  let guard = 0;
+
+  while (guard < 25) {
+    guard += 1;
+    const match = pattern.exec(result);
+    if (!match) break;
+
+    const openIndex = match.index + match[0].length - 1;
+    const group = readBracedGroup(result, openIndex);
+    if (!group) break;
+
+    const inner = transform(group.content);
+    result = `${result.slice(0, match.index)}${inner}${result.slice(group.endIndex)}`;
+  }
+
+  return result;
+}
+
+export function formatLatexForPdf(expression: string): string {
+  let formatted = expression.trim();
+  formatted = replaceLatexFractions(formatted);
+  formatted = replaceSingleArgLatexCommand(formatted, 'ce', inner =>
+    inner
+      .replace(/->\[([^\]]+)\]|<=>|->/g, (match, label?: string) => (
+        label ? ` -(${label})-> ` : ` ${match} `
+      ))
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
+  formatted = replaceSingleArgLatexCommand(formatted, 'pu', inner => inner.trim());
+  formatted = replaceSingleArgLatexCommand(formatted, 'sqrt', inner => `raiz(${formatLatexForPdf(inner)})`);
+  formatted = replaceSingleArgLatexCommand(formatted, 'text', inner => inner);
+  formatted = replaceSingleArgLatexCommand(formatted, 'mathrm', inner => inner);
+  formatted = replaceSingleArgLatexCommand(formatted, 'mathbf', inner => inner);
+  formatted = replaceSingleArgLatexCommand(formatted, 'textbf', inner => inner);
+
+  return formatted
+    .replace(/\\(?:displaystyle|textstyle|left|right)\b/g, '')
+    .replace(/\\(?:cdot|bullet)\b/g, '·')
+    .replace(/\\times\b/g, '×')
+    .replace(/\\div\b/g, '÷')
+    .replace(/\\pm\b/g, '±')
+    .replace(/\\(?:dots|cdots|ldots)\b/g, '…')
+    .replace(/\\(?:rightarrow|to)\b/g, '->')
+    .replace(/\\(?:Rightarrow|implies)\b/g, '=>')
+    .replace(/\\(?:leftrightarrow|Leftrightarrow|iff)\b/g, '<=>')
+    .replace(/\\(?:leq|le)\b/g, '<=')
+    .replace(/\\(?:geq|ge)\b/g, '>=')
+    .replace(/\\neq\b/g, '!=')
+    .replace(/\\approx\b/g, '~=')
+    .replace(/\\(?:circ|degree)\b/g, '°')
+    .replace(/\\pi\b/g, 'pi')
+    .replace(/\\Delta\b/g, 'Delta')
+    .replace(/\\alpha\b/g, 'alfa')
+    .replace(/\\beta\b/g, 'beta')
+    .replace(/\\gamma\b/g, 'gama')
+    .replace(/\\theta\b/g, 'teta')
+    .replace(/\\Omega\b/g, 'Ohm')
+    .replace(/\\mu\b/g, 'µ')
+    .replace(/\\sum\b/g, 'Soma')
+    .replace(/\\infty\b/g, 'infinito')
+    .replace(/\^\{\s*2\s*\}|\^2\b/g, '²')
+    .replace(/\^\{\s*3\s*\}|\^3\b/g, '³')
+    .replace(/\^\{\s*1\s*\}|\^1\b/g, '¹')
+    .replace(/\^\{\s*\\circ\s*\}|\^\\circ/g, '°')
+    .replace(/_\{([^}]+)\}/g, '$1')
+    .replace(/_([A-Za-z0-9]+)/g, '$1')
+    .replace(/\^\{([^}]+)\}/g, '^($1)')
+    .replace(/\\([%$&#_{}])/g, '$1')
+    .replace(/\\[,;:!]/g, ' ')
+    .replace(/[{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function replaceInlineMathForPdf(value: string): string {
   return value
+    .replace(/\$\$([^$]+)\$\$/g, (_match, expr: string) => formatLatexForPdf(expr))
+    .replace(/\\\[([^\]]+)\\\]/g, (_match, expr: string) => formatLatexForPdf(expr))
+    .replace(/\\\(([^)]+)\\\)/g, (_match, expr: string) => formatLatexForPdf(expr))
+    .replace(/(^|[^\p{L}\\$])\$([^$\n]+?)\$/gu, (_match, prefix: string, expr: string) => `${prefix}${formatLatexForPdf(expr)}`);
+}
+
+function removeInlineMarkdown(value: string): string {
+  return replaceInlineMathForPdf(value)
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/__(.*?)__/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/[*_~]/g, '')
+    .replace(/(^|\s)[*_]([^*_]+)[*_](?=\s|$|[.,;:!?])/g, '$1$2')
+    .replace(/[*~]/g, '')
     .replace(/\s*<\/?br\s*\/?>\s*/gi, ' ')
     .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -88,73 +260,219 @@ function wrapText(value: string, maxCharacters: number): string[] {
   return lines.length > 0 ? lines : [''];
 }
 
-function makeLayout(title: string, content: string): LayoutLine[] {
+function estimateCharWidth(size: number, font: PdfFont): number {
+  if (font === 'F3') return size * 0.6;
+  if (font === 'F2') return size * 0.54;
+  return size * 0.5;
+}
+
+function formatDatePtBr(): string {
+  return new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function makeLayout(content: string): LayoutLine[] {
   const lines: LayoutLine[] = [];
-  const addWrapped = (text: string, font: PdfFont, size: number, indent = 0, gapBefore = 0) => {
-    const maxCharacters = Math.max(24, Math.floor((PAGE_WIDTH - PAGE_MARGIN * 2 - indent) / (size * 0.52)));
-    wrapText(text, maxCharacters).forEach((wrapped, index) => {
+  const addWrapped = (
+    text: string,
+    font: PdfFont,
+    size: number,
+    indent = 0,
+    gapBefore = 0,
+    options: {
+      kind?: LayoutLine['kind'];
+      color?: RgbColor;
+      headingRule?: boolean;
+      boldPrefix?: string;
+    } = {},
+  ) => {
+    const kind = options.kind || 'text';
+    const availableWidth = CONTENT_WIDTH - indent - (kind === 'formula' ? 28 : 0);
+    const maxCharacters = Math.max(24, Math.floor(availableWidth / estimateCharWidth(size, font)));
+    const fullText = options.boldPrefix ? `${options.boldPrefix}${text}` : text;
+    const wrappedLines = wrapText(fullText, maxCharacters);
+
+    wrappedLines.forEach((wrapped, index) => {
+      let runs: TextRun[] | undefined;
+      if (index === 0 && options.boldPrefix && wrapped.startsWith(options.boldPrefix)) {
+        const rest = wrapped.slice(options.boldPrefix.length);
+        runs = rest
+          ? [{ text: options.boldPrefix, font: 'F2' }, { text: rest, font }]
+          : [{ text: options.boldPrefix, font: 'F2' }];
+      }
+
       lines.push({
+        kind,
         text: wrapped,
+        runs,
         font,
         size,
         indent,
         gapBefore: index === 0 ? gapBefore : 0,
-        leading: size * 1.45,
+        leading: size * 1.48,
+        color: options.color,
+        headingRule: options.headingRule && index === wrappedLines.length - 1,
       });
     });
   };
 
-  addWrapped(removeInlineMarkdown(title).slice(0, 180), 'F2', 19, 0, 0);
-  lines.push({ text: '', font: 'F1', size: 10, indent: 0, gapBefore: 4, leading: 14 });
-
   let inCodeBlock = false;
+  let inMathBlock = false;
+  let mathBuffer: string[] = [];
+  let tableRowIndex = 0;
+
+  const flushMathBlock = () => {
+    const expression = formatLatexForPdf(mathBuffer.join(' '));
+    mathBuffer = [];
+    if (expression) {
+      addWrapped(expression, 'F2', 11, 14, 6, { kind: 'formula', color: COLOR_CISEB_DEEP });
+      lines.push({ kind: 'spacer', font: 'F1', size: 10, indent: 0, gapBefore: 0, leading: 6 });
+    }
+  };
+
   for (const sourceLine of content.replace(/\r\n?/g, '\n').split('\n')) {
     const sourceTrimmed = sourceLine.trim();
+
     if (sourceTrimmed.startsWith('```')) {
+      tableRowIndex = 0;
       inCodeBlock = !inCodeBlock;
       continue;
     }
 
+    if (!inCodeBlock) {
+      if (inMathBlock) {
+        if (sourceTrimmed === '$$' || sourceTrimmed === '\\]') {
+          inMathBlock = false;
+          flushMathBlock();
+        } else {
+          mathBuffer.push(sourceTrimmed);
+        }
+        continue;
+      }
+
+      if (sourceTrimmed === '$$' || sourceTrimmed === '\\[') {
+        tableRowIndex = 0;
+        inMathBlock = true;
+        mathBuffer = [];
+        continue;
+      }
+
+      const singleLineFormula = sourceTrimmed.match(/^\$\$(.+)\$\$$/) || sourceTrimmed.match(/^\\\[(.+)\\\]$/);
+      if (singleLineFormula) {
+        tableRowIndex = 0;
+        mathBuffer = [singleLineFormula[1]];
+        flushMathBlock();
+        continue;
+      }
+    }
+
     const isTableRow = !inCodeBlock && sourceTrimmed.startsWith('|') && sourceTrimmed.endsWith('|');
+    if (!isTableRow) tableRowIndex = 0;
+
     const logicalLines = inCodeBlock || isTableRow
       ? [sourceLine]
       : sourceLine.split(/<\/?br\s*\/?>/gi);
 
     for (const rawLine of logicalLines) {
       const trimmed = rawLine.trim();
-      if (!trimmed || /^---+$/.test(trimmed)) {
-        lines.push({ text: '', font: 'F1', size: 10, indent: 0, gapBefore: 0, leading: 8 });
+      if (!trimmed) {
+        lines.push({ kind: 'spacer', font: 'F1', size: 10, indent: 0, gapBefore: 0, leading: 6 });
         continue;
       }
 
-      const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+      if (!inCodeBlock && /^---+$/.test(trimmed)) {
+        lines.push({ kind: 'rule', font: 'F1', size: 10, indent: 0, gapBefore: 6, leading: 10 });
+        continue;
+      }
+
+      const heading = !inCodeBlock ? trimmed.match(/^(#{1,3})\s+(.+)$/) : null;
       if (heading) {
         const level = heading[1].length;
-        const size = level === 1 ? 16 : level === 2 ? 13 : 11;
-        addWrapped(removeInlineMarkdown(heading[2]), 'F2', size, 0, 8);
+        const size = level === 1 ? 14.5 : level === 2 ? 12.5 : 11;
+        addWrapped(removeInlineMarkdown(heading[2]), 'F2', size, 0, level === 1 ? 12 : 9, {
+          color: level <= 2 ? COLOR_CISEB_BLUE : COLOR_CISEB_DEEP,
+          headingRule: level <= 2,
+        });
         continue;
       }
 
-      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      if (isTableRow) {
         if (/^\|[\s:|-]+\|$/.test(trimmed)) continue;
         const cells = trimmed.split('|').slice(1, -1).map(cell => removeInlineMarkdown(cell.trim()));
-        addWrapped(cells.join('  ·  '), 'F1', 9.5, 8, 2);
+        const isHeader = tableRowIndex === 0;
+        tableRowIndex += 1;
+        const rowText = cells.join('  |  ');
+        const maxChars = Math.max(30, Math.floor((CONTENT_WIDTH - 16) / estimateCharWidth(9.2, isHeader ? 'F2' : 'F1')));
+        wrapText(rowText, maxChars).forEach((wrapped, idx) => {
+          lines.push({
+            kind: 'table-row',
+            text: wrapped,
+            cells,
+            isTableHeader: isHeader,
+            font: isHeader ? 'F2' : 'F1',
+            size: 9.2,
+            indent: 8,
+            gapBefore: idx === 0 && isHeader ? 6 : 0,
+            leading: 15,
+            color: isHeader ? COLOR_CISEB_DEEP : COLOR_TEXT_BODY,
+          });
+        });
         continue;
       }
 
-      const bullet = trimmed.match(/^(?:[-*+]\s+|\d+[.)]\s+)(.*)$/);
+      const bullet = !inCodeBlock ? trimmed.match(/^(?:[-*+]\s+|\d+[.)]\s+|•\s+)(.*)$/) : null;
       if (bullet) {
-        addWrapped(`• ${removeInlineMarkdown(bullet[1])}`, 'F1', 10.5, 10, 1);
+        const itemBody = bullet[1].trim();
+        const boldLead = itemBody.match(/^\*\*([^*]+)\*\*\s*(.*)$/);
+        if (boldLead) {
+          const cleanPrefix = `• ${removeInlineMarkdown(boldLead[1])}${boldLead[2] ? ' ' : ''}`;
+          const cleanRest = removeInlineMarkdown(boldLead[2]);
+          addWrapped(cleanRest, 'F1', 10.2, 12, 3, {
+            color: COLOR_TEXT_BODY,
+            boldPrefix: cleanPrefix,
+          });
+        } else {
+          addWrapped(`• ${removeInlineMarkdown(itemBody)}`, 'F1', 10.2, 12, 3, {
+            color: COLOR_TEXT_BODY,
+          });
+        }
         continue;
       }
 
-      if (trimmed.startsWith('>')) {
-        addWrapped(removeInlineMarkdown(trimmed.replace(/^>\s?/, '')), 'F1', 10.5, 12, 2);
+      if (!inCodeBlock && trimmed.startsWith('>')) {
+        addWrapped(removeInlineMarkdown(trimmed.replace(/^>\s?/, '')), 'F4', 10, 16, 4, {
+          kind: 'quote',
+          color: COLOR_TEXT_MUTED,
+        });
         continue;
       }
 
-      addWrapped(removeInlineMarkdown(trimmed), inCodeBlock ? 'F3' : 'F1', 10.5, inCodeBlock ? 12 : 0, 1);
+      const isItalicLine = !inCodeBlock && /^\*[^*].*[^*]\*$/.test(trimmed) && !trimmed.startsWith('**');
+      const boldLeadParagraph = !inCodeBlock ? trimmed.match(/^\*\*([^*]+)\*\*\s*(.+)$/) : null;
+      if (boldLeadParagraph) {
+        addWrapped(removeInlineMarkdown(boldLeadParagraph[2]), 'F1', 10.2, 0, 2, {
+          color: COLOR_TEXT_BODY,
+          boldPrefix: `${removeInlineMarkdown(boldLeadParagraph[1])} `,
+        });
+        continue;
+      }
+
+      addWrapped(
+        inCodeBlock ? rawLine : removeInlineMarkdown(trimmed),
+        inCodeBlock ? 'F3' : (isItalicLine ? 'F4' : 'F1'),
+        inCodeBlock ? 9.5 : 10.2,
+        inCodeBlock ? 12 : 0,
+        2,
+        { color: isItalicLine ? COLOR_TEXT_MUTED : COLOR_TEXT_BODY },
+      );
     }
+  }
+
+  if (inMathBlock && mathBuffer.length > 0) {
+    flushMathBlock();
   }
 
   return lines;
@@ -165,8 +483,11 @@ function paginate(lines: LayoutLine[]): LayoutLine[][] {
   let usedHeight = 0;
 
   for (const line of lines) {
-    const lineHeight = line.gapBefore + line.leading;
-    if (usedHeight + lineHeight > CONTENT_TOP - CONTENT_BOTTOM && pages[pages.length - 1].length > 0) {
+    const pageIndex = pages.length - 1;
+    const maxHeight = (pageIndex === 0 ? FIRST_PAGE_TOP : CONTINUATION_PAGE_TOP) - CONTENT_BOTTOM;
+    const lineHeight = line.gapBefore + line.leading + (line.headingRule ? 4 : 0) + (line.kind === 'formula' ? 8 : 0);
+
+    if (usedHeight + lineHeight > maxHeight && pages[pageIndex].length > 0) {
       pages.push([]);
       usedHeight = 0;
     }
@@ -177,29 +498,138 @@ function paginate(lines: LayoutLine[]): LayoutLine[][] {
   return pages;
 }
 
-function makePageStream(lines: LayoutLine[], pageNumber: number, pageCount: number): Buffer {
+function appendText(parts: Buffer[], font: PdfFont, size: number, x: number, y: number, text: string, color: RgbColor): void {
+  parts.push(Buffer.from(`${rgbFill(color)} BT /${font} ${size.toFixed(1)} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm `));
+  parts.push(literalString(text));
+  parts.push(Buffer.from(' Tj ET\n'));
+}
+
+function makePageStream(
+  lines: LayoutLine[],
+  pageNumber: number,
+  pageCount: number,
+  cleanTitle: string,
+  emissionDate: string,
+): Buffer {
   const parts: Buffer[] = [];
-  let y = CONTENT_TOP;
+
+  if (pageNumber === 1) {
+    // Faixa institucional superior (azul CISEB + ciano DINOV)
+    parts.push(Buffer.from(`${rgbFill(COLOR_CISEB_BLUE)} 0 ${(PAGE_HEIGHT - 8).toFixed(2)} ${PAGE_WIDTH.toFixed(2)} 8 re f\n`));
+    parts.push(Buffer.from(`${rgbFill(COLOR_CISEB_CYAN)} ${(PAGE_WIDTH * 0.68).toFixed(2)} ${(PAGE_HEIGHT - 8).toFixed(2)} ${(PAGE_WIDTH * 0.32).toFixed(2)} 8 re f\n`));
+
+    // Cabeçalho institucional
+    appendText(parts, 'F2', 10.5, PAGE_MARGIN, PAGE_HEIGHT - 34, 'GOVERNO DO ESTADO DO PARÁ', COLOR_CISEB_DEEP);
+    appendText(parts, 'F1', 8.5, PAGE_MARGIN, PAGE_HEIGHT - 46, 'Secretaria de Estado de Educação (SEDUC) · DINOV · CISEB', COLOR_TEXT_MUTED);
+    appendText(parts, 'F2', 8.5, PAGE_WIDTH - PAGE_MARGIN - 128, PAGE_HEIGHT - 34, 'MIRI · Material Pedagógico', COLOR_CISEB_BLUE);
+    appendText(parts, 'F1', 8.2, PAGE_WIDTH - PAGE_MARGIN - 128, PAGE_HEIGHT - 46, `Emitido em ${emissionDate}`, COLOR_TEXT_MUTED);
+
+    // Linha divisória do cabeçalho
+    parts.push(Buffer.from(`${rgbStroke(COLOR_CISEB_BLUE)} 1.2 w ${PAGE_MARGIN} ${(PAGE_HEIGHT - 56).toFixed(2)} m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} ${(PAGE_HEIGHT - 56).toFixed(2)} l S\n`));
+
+    // Cartão de título do documento
+    const cardBottom = PAGE_HEIGHT - 142;
+    const cardHeight = 74;
+    parts.push(Buffer.from(`${rgbFill(COLOR_SOFT_TINT)} ${PAGE_MARGIN} ${cardBottom.toFixed(2)} ${CONTENT_WIDTH.toFixed(2)} ${cardHeight} re f\n`));
+    parts.push(Buffer.from(`${rgbFill(COLOR_CISEB_BLUE)} ${PAGE_MARGIN} ${cardBottom.toFixed(2)} 4 ${cardHeight} re f\n`));
+    parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.6 w ${PAGE_MARGIN} ${cardBottom.toFixed(2)} ${CONTENT_WIDTH.toFixed(2)} ${cardHeight} re S\n`));
+
+    appendText(parts, 'F2', 7.5, PAGE_MARGIN + 14, cardBottom + cardHeight - 16, 'MATERIAL DE APOIO À FORMAÇÃO DOCENTE · REDE ESTADUAL DO PARÁ', COLOR_CISEB_BLUE);
+    const titleLines = wrapText(cleanTitle || 'Material de apoio', 56).slice(0, 2);
+    titleLines.forEach((titleLine, idx) => {
+      appendText(parts, 'F2', 14.5, PAGE_MARGIN + 14, cardBottom + cardHeight - 36 - idx * 18, titleLine, COLOR_TEXT_DARK);
+    });
+  } else {
+    // Cabeçalho discreto nas páginas seguintes
+    parts.push(Buffer.from(`${rgbFill(COLOR_CISEB_BLUE)} 0 ${(PAGE_HEIGHT - 4).toFixed(2)} ${PAGE_WIDTH.toFixed(2)} 4 re f\n`));
+    const shortTitle = cleanTitle.length > 68 ? `${cleanTitle.slice(0, 67)}…` : cleanTitle;
+    appendText(parts, 'F2', 8, PAGE_MARGIN, PAGE_HEIGHT - 30, 'CISEB · SEDUC-PA', COLOR_CISEB_BLUE);
+    appendText(parts, 'F1', 8, PAGE_MARGIN + 84, PAGE_HEIGHT - 30, shortTitle, COLOR_TEXT_MUTED);
+    parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.6 w ${PAGE_MARGIN} ${(PAGE_HEIGHT - 38).toFixed(2)} m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} ${(PAGE_HEIGHT - 38).toFixed(2)} l S\n`));
+  }
+
+  let y = pageNumber === 1 ? FIRST_PAGE_TOP : CONTINUATION_PAGE_TOP;
 
   for (const line of lines) {
     y -= line.gapBefore;
-    y -= line.leading;
-    if (!line.text) continue;
 
+    if (line.kind === 'spacer') {
+      y -= line.leading;
+      continue;
+    }
+
+    if (line.kind === 'rule') {
+      y -= line.leading * 0.5;
+      parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.7 w ${PAGE_MARGIN} ${y.toFixed(2)} m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} ${y.toFixed(2)} l S\n`));
+      y -= line.leading * 0.5;
+      continue;
+    }
+
+    if (line.kind === 'formula') {
+      const boxHeight = line.leading + 8;
+      const boxBottom = y - boxHeight;
+      parts.push(Buffer.from(`${rgbFill(COLOR_SOFT_TINT)} ${(PAGE_MARGIN + 8).toFixed(2)} ${boxBottom.toFixed(2)} ${(CONTENT_WIDTH - 16).toFixed(2)} ${boxHeight.toFixed(2)} re f\n`));
+      parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.6 w ${(PAGE_MARGIN + 8).toFixed(2)} ${boxBottom.toFixed(2)} ${(CONTENT_WIDTH - 16).toFixed(2)} ${boxHeight.toFixed(2)} re S\n`));
+      const text = line.text || '';
+      const estimatedWidth = text.length * estimateCharWidth(line.size, line.font);
+      const centeredX = Math.max(PAGE_MARGIN + 18, PAGE_MARGIN + (CONTENT_WIDTH - estimatedWidth) / 2);
+      appendText(parts, line.font, line.size, centeredX, boxBottom + (boxHeight - line.size) * 0.45, text, line.color || COLOR_CISEB_DEEP);
+      y = boxBottom;
+      continue;
+    }
+
+    if (line.kind === 'table-row') {
+      const rowHeight = line.leading;
+      const rowBottom = y - rowHeight;
+      if (line.isTableHeader) {
+        parts.push(Buffer.from(`${rgbFill(COLOR_TABLE_HEAD)} ${PAGE_MARGIN} ${rowBottom.toFixed(2)} ${CONTENT_WIDTH.toFixed(2)} ${rowHeight.toFixed(2)} re f\n`));
+      }
+      parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.5 w ${PAGE_MARGIN} ${rowBottom.toFixed(2)} m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} ${rowBottom.toFixed(2)} l S\n`));
+      appendText(parts, line.font, line.size, PAGE_MARGIN + line.indent, rowBottom + 4.5, line.text || '', line.color || COLOR_TEXT_BODY);
+      y = rowBottom;
+      continue;
+    }
+
+    if (line.kind === 'quote') {
+      const rowBottom = y - line.leading;
+      parts.push(Buffer.from(`${rgbFill(COLOR_CISEB_BLUE)} ${(PAGE_MARGIN + 4).toFixed(2)} ${(rowBottom + 1).toFixed(2)} 2.5 ${(line.leading - 1).toFixed(2)} re f\n`));
+      appendText(parts, line.font, line.size, PAGE_MARGIN + line.indent, rowBottom + (line.leading - line.size) * 0.35, line.text || '', line.color || COLOR_TEXT_MUTED);
+      y = rowBottom;
+      continue;
+    }
+
+    y -= line.leading;
     const textY = Math.max(CONTENT_BOTTOM, y + (line.leading - line.size) * 0.35);
-    parts.push(Buffer.from(`BT /${line.font} ${line.size} Tf 1 0 0 1 ${PAGE_MARGIN + line.indent} ${textY.toFixed(2)} Tm `));
-    parts.push(literalString(line.text));
-    parts.push(Buffer.from(' Tj ET\n'));
+    const color = line.color || COLOR_TEXT_BODY;
+
+    if (line.runs && line.runs.length > 0) {
+      let cursorX = PAGE_MARGIN + line.indent;
+      for (const run of line.runs) {
+        appendText(parts, run.font, line.size, cursorX, textY, run.text, run.font === 'F2' ? COLOR_TEXT_DARK : color);
+        cursorX += run.text.length * estimateCharWidth(line.size, run.font);
+      }
+    } else if (line.text) {
+      appendText(parts, line.font, line.size, PAGE_MARGIN + line.indent, textY, line.text, color);
+    }
+
+    if (line.headingRule) {
+      y -= 4;
+      parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.6 w ${PAGE_MARGIN} ${y.toFixed(2)} m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} ${y.toFixed(2)} l S\n`));
+    }
   }
 
-  parts.push(Buffer.from(`BT /F1 8 Tf 1 0 0 1 ${PAGE_MARGIN} 32 Tm `));
-  parts.push(literalString(`BOT CISEB · Página ${pageNumber} de ${pageCount}`));
-  parts.push(Buffer.from(' Tj ET\n'));
+  // Rodapé institucional em todas as páginas
+  parts.push(Buffer.from(`${rgbStroke(COLOR_BORDER)} 0.6 w ${PAGE_MARGIN} 42 m ${(PAGE_WIDTH - PAGE_MARGIN).toFixed(2)} 42 l S\n`));
+  appendText(parts, 'F1', 8, PAGE_MARGIN, 29, 'CISEB · DINOV · SEDUC-PA — Material gerado com apoio do MIRI', COLOR_TEXT_MUTED);
+  appendText(parts, 'F2', 8, PAGE_WIDTH - PAGE_MARGIN - 64, 29, `Página ${pageNumber} de ${pageCount}`, COLOR_CISEB_BLUE);
+
   return Buffer.concat(parts);
 }
 
 export function generatePdf(title: string, content: string): Buffer {
-  const pages = paginate(makeLayout(title, content));
+  const cleanTitle = removeInlineMarkdown(title).slice(0, 180) || 'Material de apoio';
+  const emissionDate = formatDatePtBr();
+  const pages = paginate(makeLayout(content));
   const objects: Buffer[] = [Buffer.alloc(0)];
   const addObject = (body: Buffer | string): number => {
     objects.push(typeof body === 'string' ? Buffer.from(body, 'latin1') : body);
@@ -208,13 +638,14 @@ export function generatePdf(title: string, content: string): Buffer {
 
   addObject('<< /Type /Catalog /Pages 2 0 R >>');
   addObject('');
-  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>');
-  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>');
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
   addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>');
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>');
 
   const pageObjectIds: number[] = [];
   for (let index = 0; index < pages.length; index += 1) {
-    const contentStream = makePageStream(pages[index], index + 1, pages.length);
+    const contentStream = makePageStream(pages[index], index + 1, pages.length, cleanTitle, emissionDate);
     const streamObjectId = objects.length;
     const pageObjectId = streamObjectId + 1;
     addObject(Buffer.concat([
@@ -222,7 +653,7 @@ export function generatePdf(title: string, content: string): Buffer {
       contentStream,
       Buffer.from('\nendstream'),
     ]));
-    addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents ${streamObjectId} 0 R >>`);
+    addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents ${streamObjectId} 0 R >>`);
     pageObjectIds.push(pageObjectId);
   }
 
