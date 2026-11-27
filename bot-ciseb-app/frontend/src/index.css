@@ -200,6 +200,20 @@
   border-color: #cbd5e1 !important;
 }
 
+.pdf-print-sheet code:not(pre code) {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.pdf-print-sheet blockquote {
+  border-left-color: #005BAC !important;
+  color: #475569 !important;
+}
+
+.pdf-print-sheet a {
+  color: #005BAC !important;
+}
+
 @media print {
   @page {
     size: A4;

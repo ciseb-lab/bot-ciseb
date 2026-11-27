@@ -275,15 +275,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         </MarkdownText>
 
                         {!isUser && (message.groundedDocuments?.length || 0) > 0 && (
-                          <div className="mt-4 border-t border-slate-200/70 pt-3">
-                            <p className="mb-2 text-[11px] font-semibold text-slate-600">Fontes consultadas</p>
+                          <div className="mt-4 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
+                            <p className="mb-2 text-[11px] font-semibold text-slate-600 dark:text-slate-300">Fontes consultadas</p>
                             <div className="flex flex-wrap gap-2">
                               {message.groundedDocuments?.map(reference => (
                               <button
                                 type="button"
                                   key={`${reference.source}-${reference.pageNumber || 'doc'}`}
                                   onClick={() => void downloadApiFile(`/api/documents/${encodeURIComponent(reference.source)}`, reference.source).catch(reason => setDownloadError(reason instanceof Error ? reason.message : 'Falha ao baixar o documento.'))}
-                                  className="rounded-lg bg-[#E0F2FE] px-2.5 py-1.5 text-[11px] font-medium text-[#005BAC] transition hover:bg-[#cdeafe] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
+                                  className="cursor-pointer rounded-lg bg-[#E0F2FE] px-2.5 py-1.5 text-[11px] font-medium text-[#005BAC] transition hover:bg-[#cdeafe] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:bg-[#005BAC]/30 dark:text-[#9bdcff] dark:hover:bg-[#005BAC]/45"
                                 >
                                   {reference.title}{reference.pageNumber ? ` · p. ${reference.pageNumber}` : ''}
                               </button>
@@ -293,19 +293,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         )}
 
                         {!isUser && (
-                          <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-slate-200/70 pt-2">
+                          <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-slate-200/70 pt-2 dark:border-slate-700/70">
                             <button
                               type="button"
                               onClick={() => void copyToClipboard(message)}
-                              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 transition hover:bg-slate-200/60 hover:text-[#005BAC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
+                              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 transition hover:bg-slate-200/60 hover:text-[#005BAC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#00AAFF]"
                             >
-                              {copiedId === message.id ? <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+                              {copiedId === message.id ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
                               {copiedId === message.id ? 'Copiado' : 'Copiar'}
                             </button>
                             <button
                               type="button"
                               onClick={() => onExportMessage(message)}
-                              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#005BAC] transition hover:bg-[#E0F2FE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC]"
+                              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#005BAC] transition hover:bg-[#E0F2FE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005BAC] dark:text-[#38bdf8] dark:hover:bg-slate-800"
                             >
                               <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
                               Revisar e exportar PDF
